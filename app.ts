@@ -58,4 +58,4 @@ app.use(function (err: any, req: Request, res: Response, next: NextFunction) {
   res.json('ERR');
 });
 
-module.exports = app;
+export { app };

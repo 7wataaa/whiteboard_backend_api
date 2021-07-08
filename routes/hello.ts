@@ -6,10 +6,10 @@ export const router = Router();
  * @swagger
  * /hello/{username}:
  *  get:
- *    description: ユーザーネームを受け取って、Dateを返す
+ *    description: ユーザーネームを受け取って、を返す
  *    responses:
  *      - 200:
- *        description: usernameとDateが入ったjson
+ *        description: usernameが入ったjson
  *    parameters:
  *      - name: username
  *        description: ユーザの表示名
@@ -23,7 +23,5 @@ router.get('/:username', (req: Request, res: Response) => {
 
   res.json({
     message: `Hello: ${username}`,
-    date: new Date(),
-    query: req.query,
   });
 });
