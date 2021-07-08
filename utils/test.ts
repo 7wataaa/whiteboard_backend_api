@@ -13,7 +13,7 @@ describe('/', () => {
   });
 });
 
-describe('/hello', () => {
+describe('/hello:username', () => {
   test('/hello/user1 をgetしたときのテスト', async () => {
     const username = 'user1';
     const response = await request(app).get('/hello/' + username);
