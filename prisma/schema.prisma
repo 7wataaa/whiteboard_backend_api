@@ -9,3 +9,29 @@ datasource db {
 generator client {
   provider = "prisma-client-js"
 }
+
+model User {
+  id Int @default(autoincrement()) @id
+  password String
+  username String
+}
+
+model Room {
+  id String @db.Uuid @id
+  name String
+  createdAt DateTime @default(now())
+}
+
+model room_users {
+  id Int @default(autoincrement()) @id
+  user_id Int
+  room_id String
+}
+
+model Post {
+  id String @db.Uuid @id
+  text String
+  room_id String
+  update_at DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
