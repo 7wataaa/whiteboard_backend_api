@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { app } from '../app';
 import { createUser } from '../src/createUser';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -61,7 +62,7 @@ describe('createUser', () => {
 
     const result = await createUser({ username: username, password: password });
     expect(result.username).toBe(username);
-    expect(result.password).toBe(password);
+    expect(await bcrypt.compare(password, result.password)).toBe(true);
 
     const createdUser = await prisma.user.findUnique({
       where: {
@@ -70,7 +71,7 @@ describe('createUser', () => {
     });
 
     expect(createdUser.username).toBe(username);
-    expect(createdUser.password).toBe(password);
+    expect(await bcrypt.compare(password, createdUser.password)).toBe(true);
 
     await prisma.user.delete({
       where: { id: result.id },
