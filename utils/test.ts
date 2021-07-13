@@ -1,9 +1,9 @@
-import { app } from '../app';
+import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
-import { MockContext, Context, createMockContext } from './context';
+import { app } from '../app';
+import { createUser } from '../src/createUser';
 
-let mockCtx: MockContext;
-let ctx: Context;
+const prisma = new PrismaClient();
 
 describe('/', () => {
   test('getしたときのテスト', async () => {
@@ -26,20 +26,54 @@ describe('/hello', () => {
 });
 
 describe('/users', () => {
-  beforeEach(() => {
-    mockCtx = createMockContext();
-    ctx = mockCtx as unknown as Context;
-  });
-
   test('ユーザーの新規作成ができるか', async () => {
-    const response = await request(app).post('/users').send({
-      username: 'user1',
-      password: 'password',
+    const username =
+      '9EC62C20118FF506DAC139EC30A521D12B9883E55DA92B7D9ADEEFE09ED4E0BD152E2A099339871424263784F8103391F83B781C432F45ECCB03E18E28060D2F';
+
+    const result = await request(app)
+      .post('/users')
+      .send({
+        username: username,
+        password: 'password',
+      })
+      .set('Accept', 'application/json');
+
+    expect(result.status).toBe(200);
+
+    expect(result.header['content-type']).toStrictEqual(
+      'application/json; charset=utf-8'
+    );
+
+    const userDeleteResult = await prisma.user.delete({
+      where: {
+        id: result.body['id'],
+      },
     });
 
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({
-      users: [],
+    expect(userDeleteResult.username).toBe(username);
+  });
+});
+
+describe('createUser', () => {
+  test('userが作成できるか', async () => {
+    const username = 'user000';
+    const password = 'password000';
+
+    const result = await createUser({ username: username, password: password });
+    expect(result.username).toBe(username);
+    expect(result.password).toBe(password);
+
+    const createdUser = await prisma.user.findUnique({
+      where: {
+        id: result.id,
+      },
+    });
+
+    expect(createdUser.username).toBe(username);
+    expect(createdUser.password).toBe(password);
+
+    await prisma.user.delete({
+      where: { id: result.id },
     });
   });
 });

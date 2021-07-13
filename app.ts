@@ -5,6 +5,7 @@ import createError from 'http-errors';
 import logger from 'morgan';
 import { router as helloRouter } from './routes/hello';
 import { router as indexRouter } from './routes/index';
+import { router as usersRouter } from './routes/users';
 
 const app = express();
 
@@ -17,7 +18,7 @@ app.set('view engine', 'pug');
 
 app.use(logger('dev'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static('public'));
 app.use(helmet());
@@ -41,6 +42,7 @@ app.use(
 
 app.use('/', indexRouter);
 app.use('/hello', helloRouter);
+app.use('/users', usersRouter);
 
 // catch 404 and forward to error handler
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -55,7 +57,7 @@ app.use(function (err: any, req: Request, res: Response, next: NextFunction) {
 
   // render the error page
   res.status(err.status || 500);
-  res.json('ERR');
+  res.send(err.message);
 });
 
 export { app };
