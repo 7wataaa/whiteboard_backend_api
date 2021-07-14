@@ -21,7 +21,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static('public'));
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        defaultSrc: "'none'",
+      },
+    },
+  })
+);
 
 const swaggerOptions: swaggerJSDoc.Options = {
   swaggerDefinition: {
