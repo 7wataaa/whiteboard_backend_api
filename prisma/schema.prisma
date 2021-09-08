@@ -11,27 +11,44 @@ generator client {
 }
 
 model User {
-  id Int @default(autoincrement()) @id
-  password String
-  username String
+  id             String       @id @default(uuid()) @db.Uuid
+  email          String       @unique
+  username       String
+  hashedPassword String       @map("hashed_password")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  deletedAt      DateTime?    @map("deleted_at")
+  updatedAt      DateTime     @map("updated_at")
+  role           Role         @default(USER)
+  rooms          Room[]
+  UserInRoom     UserInRoom[]
+
+  @@map("user")
+}
+
+enum Role {
+  USER
+  ADMIN
+
+  @@map("role")
 }
 
 model Room {
-  id String @db.Uuid @id
-  name String
-  createdAt DateTime @default(now())
+  id          String       @id @default(uuid()) @db.Uuid
+  joinedUsers User[]
+  name        String
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updateAt    DateTime     @map("update_at")
+  UserInRoom  UserInRoom[]
+
+  @@map("room")
 }
 
-model room_users {
-  id Int @default(autoincrement()) @id
-  user_id Int
-  room_id String
-}
+model UserInRoom {
+  room   Room   @relation(fields: [roomId], references: [id])
+  roomId String @map("room_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @map("user_id") @db.Uuid
 
-model Post {
-  id String @db.Uuid @id
-  text String
-  room_id String
-  update_at DateTime @updatedAt
-  createdAt DateTime @default(now())
+  @@id([roomId, userId])
+  @@map("user_in_room")
 }
