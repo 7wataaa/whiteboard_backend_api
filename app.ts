@@ -3,9 +3,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import createError from 'http-errors';
 import logger from 'morgan';
-import { router as helloRouter } from './routes/hello';
-import { router as indexRouter } from './routes/index';
-import { router as usersRouter } from './routes/users';
+import { router as pingRouter } from './routes/v0/ping';
 
 const app = express();
 
@@ -39,7 +37,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
       version: '0.1.0',
     },
   },
-  apis: ['routes/*'],
+  apis: ['routes/v0/*'],
 };
 
 // Swaggerの設定
@@ -49,9 +47,7 @@ app.use(
   swaggerUi.setup(swaggerJSDoc(swaggerOptions))
 );
 
-app.use('/', indexRouter);
-app.use('/hello', helloRouter);
-app.use('/users', usersRouter);
+app.use('/api/v0/', pingRouter);
 
 // catch 404 and forward to error handler
 app.use((req: Request, res: Response, next: NextFunction) => {
