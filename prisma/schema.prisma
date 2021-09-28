@@ -11,16 +11,20 @@ generator client {
 }
 
 model User {
-  id             String       @id @default(uuid()) @db.Uuid
-  email          String       @unique
-  username       String
-  hashedPassword String       @map("hashed_password")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  deletedAt      DateTime?    @map("deleted_at")
-  updatedAt      DateTime     @map("updated_at")
-  role           Role         @default(USER)
-  rooms          Room[]
-  UserInRoom     UserInRoom[]
+  id                       String       @id @default(uuid()) @db.Uuid
+  email                    String       @unique
+  username                 String
+  hashedPassword           String       @map("hashed_password")
+  createdAt                DateTime     @default(now()) @map("created_at")
+  deletedAt                DateTime?    @map("deleted_at")
+  updatedAt                DateTime     @default(now()) @map("updated_at")
+  role                     Role         @default(USER)
+  rooms                    Room[]
+  userInRoom               UserInRoom[]
+  loginToken               String       @unique @map("login_token")
+  loginTokenExpirationAt   DateTime     @map("login_token_expiration_at")
+  refreshToken             String       @unique @map("refresh_token")
+  refreshTokenExpirationAt DateTime     @map("refresh_token_expiration_at")
 
   @@map("user")
 }

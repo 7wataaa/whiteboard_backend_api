@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import createError from 'http-errors';
 import logger from 'morgan';
 import { router as pingRouter } from './routes/v0/ping';
+import { router as registerRouter } from './routes/v0/auth/register';
 
 const app = express();
 
@@ -37,7 +38,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
       version: '0.1.0',
     },
   },
-  apis: ['routes/v0/*'],
+  apis: ['routes/v0/**/*.ts'],
 };
 
 // Swaggerの設定
@@ -48,6 +49,7 @@ app.use(
 );
 
 app.use('/api/v0/', pingRouter);
+app.use('/api/v0/', registerRouter);
 
 // catch 404 and forward to error handler
 app.use((req: Request, res: Response, next: NextFunction) => {
