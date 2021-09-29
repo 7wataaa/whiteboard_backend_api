@@ -1,5 +1,5 @@
+import crypto from 'crypto';
 import { prisma } from '../prismaClient';
-import { randomBytes } from 'crypto';
 
 interface LoginToken {
   loginToken: string;
@@ -12,10 +12,12 @@ interface RefreshToken {
 }
 
 export async function createLoginToken(): Promise<LoginToken> {
-  let loginToken = randomBytes(48).toString('base64').substring(0, 48);
+  let loginToken = crypto.randomBytes(48).toString('base64').substring(0, 48);
+
+  // まだ登録していないのにこのloginTokenが登録されていたら被っているので再生成する
   while (await prisma.user.findUnique({ where: { loginToken: loginToken } })) {
     console.log('トークンが他と被ってるため再生成');
-    loginToken = randomBytes(48).toString('base64').substring(0, 48);
+    loginToken = crypto.randomBytes(48).toString('base64').substring(0, 48);
   }
 
   const after30Minutes = new Date(
@@ -29,12 +31,12 @@ export async function createLoginToken(): Promise<LoginToken> {
 }
 
 export async function createRefreshToken(): Promise<RefreshToken> {
-  let refreshToken = randomBytes(48).toString('base64').substring(0, 48);
+  let refreshToken = crypto.randomBytes(48).toString('base64').substring(0, 48);
   while (
     await prisma.user.findUnique({ where: { refreshToken: refreshToken } })
   ) {
     console.log('トークンが他と被ってるため再生成');
-    refreshToken = randomBytes(48).toString('base64').substring(0, 48);
+    refreshToken = crypto.randomBytes(48).toString('base64').substring(0, 48);
   }
 
   const after6Months = new Date(
