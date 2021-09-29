@@ -39,9 +39,7 @@ export async function createRefreshToken(): Promise<RefreshToken> {
     refreshToken = crypto.randomBytes(48).toString('base64').substring(0, 48);
   }
 
-  const after6Months = new Date(
-    new Date().setMonth(new Date().getMonth() + 30)
-  );
+  const after6Months = new Date(new Date().setMonth(new Date().getMonth() + 6));
 
   return {
     refreshToken: refreshToken,
