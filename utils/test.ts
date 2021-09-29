@@ -4,8 +4,10 @@ import request from 'supertest';
 import { app } from '../app';
 import { createLoginToken, createRefreshToken } from '../model/createToken';
 import { prisma } from '../prismaClient';
-import { resetDB } from './resetDB';
+import { deleteUser } from './deleteUser';
 dotenv.config();
+
+/* 処理等のテスト */
 
 describe('/app.ts', () => {
   test('ルートパスをgetしたときのテスト', async () => {
@@ -18,11 +20,6 @@ describe('/app.ts', () => {
 const existTokenBuffer = crypto.randomBytes(48);
 
 describe('/model/createToken.ts', () => {
-  beforeAll(async () => {
-    jest.setTimeout(10000);
-    await resetDB();
-  });
-
   test('ログイントークンが適切に生成されるか', async () => {
     const now = new Date();
 
@@ -33,12 +30,19 @@ describe('/model/createToken.ts', () => {
 
     const loginTokenExpirationDate = new Date(loginTokenExpirationAt);
 
-    expect(loginTokenExpirationDate.getTime()).toBeGreaterThanOrEqual(
-      new Date(now.getTime() + 30 * 60 * 1000).getTime()
-    );
+    // 前と今の差が-5000mx+30分以上～30分以下だとOK
+
+    const thirtyMinutes = 1800000;
+
+    const diff = loginTokenExpirationDate.getTime() - new Date().getTime();
+
+    expect(diff).toBeGreaterThanOrEqual(thirtyMinutes - 5000);
+    expect(diff).toBeLessThanOrEqual(thirtyMinutes);
   });
 
   test('ログイントークンがかぶった場合に再生成されるか', async () => {
+    const loginTokenTestEmail = 'logintokentest@example.com';
+
     const CryptoRandomBytesSpy = jest.spyOn(crypto, 'randomBytes');
 
     CryptoRandomBytesSpy.mockImplementationOnce((num: number) => {
@@ -52,7 +56,7 @@ describe('/model/createToken.ts', () => {
     await prisma.user.create({
       data: {
         username: 'testuser',
-        email: 'logintokentest@example.com',
+        email: loginTokenTestEmail,
         hashedPassword: '',
         loginToken: existLoginToken,
         loginTokenExpirationAt: new Date(new Date().getTime() + 30 * 60 * 1000),
@@ -70,6 +74,8 @@ describe('/model/createToken.ts', () => {
     expect(loginToken).not.toBe(existLoginToken);
 
     CryptoRandomBytesSpy.mockRestore();
+
+    await deleteUser(prisma, loginTokenTestEmail);
   });
 
   test('リフレッシュトークンが適切に生成されるか', async () => {
@@ -98,6 +104,8 @@ describe('/model/createToken.ts', () => {
   });
 
   test('リフレッシュトークンがかぶった場合に再生成されるか', async () => {
+    const refreshTokenTestEmail = 'refreshtokentest@example.com';
+
     const CryptoRandomBytesSpy = jest.spyOn(crypto, 'randomBytes');
 
     CryptoRandomBytesSpy.mockImplementationOnce((num: number) => {
@@ -111,7 +119,7 @@ describe('/model/createToken.ts', () => {
     await prisma.user.create({
       data: {
         username: 'testuser',
-        email: 'refreshtokentest@example.com',
+        email: refreshTokenTestEmail,
         hashedPassword: '',
         loginToken: '',
         loginTokenExpirationAt: new Date(new Date().getTime() + 30 * 60 * 1000),
@@ -129,12 +137,23 @@ describe('/model/createToken.ts', () => {
     expect(refreshToken).not.toBe(existRefreshToken);
 
     CryptoRandomBytesSpy.mockRestore();
+
+    await deleteUser(prisma, refreshTokenTestEmail);
   });
 });
+
+/* URL叩くテスト */
 
 describe('/api/v0/ping', () => {
   test('getしたときのテスト', async () => {
     const response = await request(app).get('/api/v0/ping');
     expect(response.status).toBe(200);
+  });
+});
+
+describe('/api/v0/auth/register', () => {
+  test('ユーザーが作成できるか', async () => {
+    const email = 'usercreatetest@example.com';
+    const password = 'password';
   });
 });
