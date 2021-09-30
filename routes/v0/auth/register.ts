@@ -83,7 +83,7 @@ router.post('/auth/register', async (req: Request, res: Response) => {
       ...(await refreshToken),
     });
   } else {
-    res.send(500);
+    res.status(500);
     res.json({
       errorMassage: '何らかの理由でユーザーが作成できなかった',
     });
