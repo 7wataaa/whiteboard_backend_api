@@ -1,3 +1,4 @@
+import * as bcrypto from 'bcrypt';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import request from 'supertest';
@@ -152,8 +153,126 @@ describe('/api/v0/ping', () => {
 });
 
 describe('/api/v0/auth/register', () => {
-  test('ユーザーが作成できるか', async () => {
-    const email = 'usercreatetest@example.com';
-    const password = 'password';
+  test('正しくトークンとリフレッシュトークンが返されるか', async () => {
+    const postTestEmail = 'usercreatetest@example.com';
+    const postTestPassword = 'password';
+
+    const response = await request(app).post('/api/v0/auth/register').send({
+      email: postTestEmail,
+      password: postTestPassword,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.type).toBe('application/json');
+
+    const tokenRegExp = /^[\-\~\+\/\w]{48}$/;
+
+    expect(response.body['loginToken']).toMatch(tokenRegExp);
+    expect(response.body['refreshToken']).toMatch(tokenRegExp);
+
+    // ログイントークンの期限切れ時と今の差が-5000ms+30分以上～30分以下だとOK
+
+    const thirtyMinutes = 1800000;
+
+    const loginTokenTimediff =
+      new Date(response.body['loginTokenExpirationAt']).getTime() -
+      new Date().getTime();
+
+    expect(loginTokenTimediff).toBeGreaterThanOrEqual(thirtyMinutes - 5000);
+    expect(loginTokenTimediff).toBeLessThanOrEqual(thirtyMinutes);
+
+    // リフレッシュトークンの期限切れ時と今の差がミリ秒で-2日+6ヶ月以上～6ヶ月以下だとOK
+
+    const sixMonthAsMillisecond = 15778800000;
+    const sixMonthMinusTwoDateAsMillisecond = sixMonthAsMillisecond - 172800000;
+
+    const refreshTokenTimeDiff =
+      new Date(response.body['refreshTokenExpirationAt']).getTime() -
+      new Date().getTime();
+
+    expect(refreshTokenTimeDiff).toBeLessThanOrEqual(sixMonthAsMillisecond);
+    expect(refreshTokenTimeDiff).toBeGreaterThanOrEqual(
+      sixMonthMinusTwoDateAsMillisecond
+    );
+
+    await deleteUser(prisma, postTestEmail);
+  });
+
+  test('不正なメアドだったときにエラーが返されるか', async () => {
+    const invalidEmailTestEmail = '';
+    const invalidEmailTestPassword = 'password';
+
+    const response = await request(app).post('/api/v0/auth/register').send({
+      email: invalidEmailTestEmail,
+      password: invalidEmailTestPassword,
+    });
+
+    expect(response.status).toBe(400);
+
+    await deleteUser(prisma, invalidEmailTestEmail);
+  });
+
+  test('不正なパスワードだったときにエラーが返されるか', async () => {
+    const invalidPasswordTestEmail = '';
+    const invalidPasswordTestPassword = 'password';
+
+    const response = await request(app).post('/api/v0/auth/register').send({
+      email: invalidPasswordTestEmail,
+      password: invalidPasswordTestPassword,
+    });
+
+    expect(response.status).toBe(400);
+
+    await deleteUser(prisma, invalidPasswordTestEmail);
+  });
+
+  test('すでにユーザーが登録されていたときにエラーが返されるか', async () => {
+    const aleadyExistsTestEmail = 'aleadyexiststest@example.com';
+    const aleadyExistsTestPassword = 'password';
+
+    await prisma.user.create({
+      data: {
+        username: 'testuser',
+        email: aleadyExistsTestEmail,
+        hashedPassword: bcrypto.hashSync(aleadyExistsTestPassword, 10),
+        loginToken: '',
+        loginTokenExpirationAt: new Date(),
+        refreshToken: '',
+        refreshTokenExpirationAt: new Date(),
+      },
+    });
+
+    const response = await request(app).post('/api/v0/auth/register').send({
+      email: aleadyExistsTestEmail,
+      password: aleadyExistsTestPassword,
+    });
+
+    expect(response.status).toBe(409);
+    expect(response.body['errorMassage']).toBe(
+      'このユーザーはすでに登録されています'
+    );
+
+    await deleteUser(prisma, aleadyExistsTestEmail);
+  });
+
+  test('ユーザーを作成できなかったときにエラーを返されるか', async () => {
+    const canNotCreateTestEmail = 'cannotcreatetest@example.com';
+    const canNotCreateTestPassword = 'password';
+
+    const prismaUserCreateSpy = jest.spyOn(prisma.user, 'create');
+
+    prismaUserCreateSpy.mockRejectedValue(null);
+
+    const response = await request(app).post('/api/v0/auth/register').send({
+      email: canNotCreateTestEmail,
+      password: canNotCreateTestPassword,
+    });
+
+    expect(response.status).toBe(500);
+    expect(response.body['errorMassage']).toBe(
+      '何らかの理由でユーザーが作成できなかった'
+    );
+
+    await deleteUser(prisma, canNotCreateTestEmail);
   });
 });
