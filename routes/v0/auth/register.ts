@@ -21,7 +21,7 @@ router.post('/auth/register', async (req: Request, res: Response) => {
   const email = req.body['email'];
   const password = req.body['password'];
 
-  if (email == '' && !email && password == '' && !password) {
+  if (email == '' || !email || password == '' || !password) {
     res.sendStatus(400);
     return;
   }
