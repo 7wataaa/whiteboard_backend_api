@@ -60,18 +60,24 @@ router.post('/auth/register', async (req: Request, res: Response) => {
   const loginToken = createLoginToken();
   const refreshToken = createRefreshToken();
 
-  const newUser = await prisma.user.create({
-    data: {
-      email: email,
-      hashedPassword: bcrypt.hashSync(password, 10),
-      username: '',
-      ...(await loginToken),
-      ...(await refreshToken),
-    },
-  });
+  const newUser = await prisma.user
+    .create({
+      data: {
+        email: email,
+        hashedPassword: bcrypt.hashSync(password, 10),
+        username: '',
+        ...(await loginToken),
+        ...(await refreshToken),
+      },
+    })
+    .catch((e) => {
+      console.info(e);
+      return null;
+    });
 
   if (newUser) {
     res.status(200);
+    // TODO トークンを返却するときの方法を決める(例: どこかしらのヘッダーに入れるなど)
     res.json({
       ...(await loginToken),
       ...(await refreshToken),
