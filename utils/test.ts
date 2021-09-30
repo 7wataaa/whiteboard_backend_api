@@ -208,8 +208,6 @@ describe('/api/v0/auth/register', () => {
     });
 
     expect(response.status).toBe(400);
-
-    await deleteUser(prisma, invalidEmailTestEmail);
   });
 
   test('不正なパスワードだったときにエラーが返されるか', async () => {
@@ -222,8 +220,6 @@ describe('/api/v0/auth/register', () => {
     });
 
     expect(response.status).toBe(400);
-
-    await deleteUser(prisma, invalidPasswordTestEmail);
   });
 
   test('すでにユーザーが登録されていたときにエラーが返されるか', async () => {
@@ -272,7 +268,5 @@ describe('/api/v0/auth/register', () => {
     expect(response.body['errorMassage']).toBe(
       '何らかの理由でユーザーが作成できなかった'
     );
-
-    await deleteUser(prisma, canNotCreateTestEmail);
   });
 });
