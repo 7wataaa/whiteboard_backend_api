@@ -12,12 +12,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Setup docker compose
-        shell: bash
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+      - name: Start containers
         run: |
           docker volume create --name=whiteboard-data
           docker-compose up -d
-          docker-compose exec -T app bash test.sh
+          docker-compose ps -a
+
+      - name: Install modules
+        run: docker-compose exec -T app yarn install
+
+      - name: Reset DB
+        env:
+          DATABASE_URL: 'postgresql://postgres:postgres@db:5432/whiteboard'
+          TEST_DATABASE_URL: 'postgresql://postgres:postgres@db:5432/test'
+        run: |
+          docker-compose exec -T app env DATABASE_URL="$TEST_DATABASE_URL" npx prisma migrate reset --force
+
+      - name: Start test
+        env:
+          DATABASE_URL: 'postgresql://postgres:postgres@db:5432/whiteboard'
+          TEST_DATABASE_URL: 'postgresql://postgres:postgres@db:5432/test'
+        run: |
+          docker-compose exec -T app env DATABASE_URL="$TEST_DATABASE_URL" npx jest --coverage --forceExit --detectOpenHandles
