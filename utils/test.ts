@@ -1,4 +1,4 @@
-import * as bcrypto from 'bcrypt';
+import * as bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import request from 'supertest';
@@ -6,6 +6,7 @@ import { app } from '../app';
 import { createLoginToken, createRefreshToken } from '../model/createToken';
 import { prisma } from '../prismaClient';
 import { deleteUser } from './deleteUser';
+import { login } from '../model/login';
 dotenv.config();
 
 /* 処理等のテスト */
@@ -143,6 +144,48 @@ describe('/model/createToken.ts', () => {
   });
 });
 
+describe('/model/login.ts', () => {
+  test('正しくユーザーデータを取得できるか', async () => {
+    const loginTestEmail = 'logintestemail@example.com';
+    const loginTestPassword = 'password';
+    const { loginToken, loginTokenExpirationAt } = await createLoginToken();
+
+    const { refreshToken, refreshTokenExpirationAt } =
+      await createRefreshToken();
+
+    await prisma.user.create({
+      data: {
+        username: 'logintest',
+        email: loginTestEmail,
+        hashedPassword: bcrypt.hashSync(loginTestPassword, 10),
+        loginToken: loginToken,
+        loginTokenExpirationAt: loginTokenExpirationAt,
+        refreshToken: refreshToken,
+        refreshTokenExpirationAt: refreshTokenExpirationAt,
+      },
+    });
+
+    const loginTestUser = await login(loginToken);
+
+    expect(loginTestUser.username).toBe('logintest');
+    expect(loginTestUser.email).toBe(loginTestEmail);
+    expect(
+      bcrypt.compareSync(loginTestPassword, loginTestUser.hashedPassword)
+    ).toBeTruthy();
+
+    await deleteUser(prisma, loginTestEmail);
+  });
+
+  test('ログイントークンに合致するユーザーがいなかったときのテスト', async () => {
+    const loginFailureToken =
+      'loginFailureToken1234512345123451234512345123451';
+
+    const loginTestUser = await login(loginFailureToken);
+
+    expect(loginTestUser).toBe(null);
+  });
+});
+
 /* URL叩くテスト */
 
 describe('/api/v0/ping', () => {
@@ -230,7 +273,7 @@ describe('/api/v0/auth/register', () => {
       data: {
         username: 'testuser',
         email: aleadyExistsTestEmail,
-        hashedPassword: bcrypto.hashSync(aleadyExistsTestPassword, 10),
+        hashedPassword: bcrypt.hashSync(aleadyExistsTestPassword, 10),
         loginToken: '',
         loginTokenExpirationAt: new Date(),
         refreshToken: '',
