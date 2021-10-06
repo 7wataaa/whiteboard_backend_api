@@ -1,12 +1,12 @@
 import crypto from 'crypto';
 import { prisma } from '../prismaClient';
 
-interface LoginToken {
+export interface LoginToken {
   loginToken: string;
   loginTokenExpirationAt: string;
 }
 
-interface RefreshToken {
+export interface RefreshToken {
   refreshToken: string;
   refreshTokenExpirationAt: string;
 }
