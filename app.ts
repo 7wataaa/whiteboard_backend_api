@@ -6,6 +6,7 @@ import logger from 'morgan';
 import { router as pingRouter } from './routes/v0/ping';
 import { router as registerRouter } from './routes/v0/auth/register';
 import { router as meRouter } from './routes/v0/users/me';
+import { router as refreshRouter } from './routes/v0/auth/refresh';
 
 const app = express();
 
@@ -75,6 +76,7 @@ app.use(passport.initialize());
 app.use('/api/v0/', pingRouter);
 app.use('/api/v0/', registerRouter);
 app.use('/api/v0/', meRouter);
+app.use('/api/v0/', refreshRouter);
 
 // catch 404 and forward to error handler
 app.use((req: Request, res: Response, next: NextFunction) => {
