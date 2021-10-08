@@ -25,16 +25,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static('public'));
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      useDefaults: true,
-      directives: {
-        defaultSrc: "'none'",
-      },
-    },
-  })
-);
+
+// helmetの設定 参考: https://stackoverflow.com/questions/60706823/what-modules-of-helmet-should-i-use-in-my-rest-api
+app.use(helmet.expectCt());
+app.use(helmet.frameguard());
+app.use(helmet.hsts());
+app.use(helmet.noSniff());
+app.use(helmet.permittedCrossDomainPolicies());
 
 const swaggerOptions: swaggerJSDoc.Options = {
   swaggerDefinition: {
