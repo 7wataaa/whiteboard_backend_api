@@ -409,3 +409,45 @@ describe('/api/v0/auth/register', () => {
     );
   });
 });
+
+describe('/api/v0/users/me', () => {
+  test('getしたときのテスト', async () => {
+    const profileTestEmail = 'profiletest@example.com';
+    const profileTestPass = 'password';
+
+    const { loginToken, loginTokenExpirationAt } = await createLoginToken();
+
+    const { refreshToken, refreshTokenExpirationAt } =
+      await createRefreshToken();
+
+    const user = await prisma.user.create({
+      data: {
+        username: 'profiletest',
+        email: profileTestEmail,
+        hashedPassword: bcrypt.hashSync(profileTestPass, 10),
+        loginToken: loginToken,
+        loginTokenExpirationAt: loginTokenExpirationAt,
+        refreshToken: refreshToken,
+        refreshTokenExpirationAt: refreshTokenExpirationAt,
+      },
+    });
+
+    const response = request(app)
+      .get('/api/v0/users/me')
+      .auth(loginToken, { type: 'bearer' });
+
+    expect((await response).status).toBe(200);
+
+    expect((await response).body).toEqual({
+      id: user.id,
+      username: 'profiletest',
+      email: profileTestEmail,
+    });
+  });
+
+  test('トークンなしでgetしたときのテスト', async () => {
+    const response = await request(app).get('/api/v0/users/me');
+
+    expect(response.status).toBe(401);
+  });
+});
