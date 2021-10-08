@@ -14,7 +14,7 @@ const createLoginToken = createToken.createLoginToken;
 const createRefreshToken = createToken.createRefreshToken;
 
 afterEach(async () => {
-  jest.clearAllMocks();
+  jest.restoreAllMocks();
 
   await prisma.user.deleteMany();
 });
