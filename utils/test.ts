@@ -410,6 +410,89 @@ describe('/api/v0/auth/register', () => {
   });
 });
 
+describe('/api/v0/auth/refresh', () => {
+  test('正しく新規アクセストークンを返すか', async () => {
+    const apiRefreshTestEmail = 'apirefreshtest@example.com';
+    const apiRefreshTestPass = 'password';
+
+    const { loginToken } = await createLoginToken();
+
+    const { refreshToken, refreshTokenExpirationAt } =
+      await createRefreshToken();
+
+    const user = await prisma.user.create({
+      data: {
+        username: 'refreshtest',
+        email: apiRefreshTestEmail,
+        hashedPassword: bcrypt.hashSync(apiRefreshTestPass, 10),
+        loginToken: loginToken,
+        // ログイントークンの期限は切れている想定
+        loginTokenExpirationAt: new Date(1995, 11, 17),
+        refreshToken: refreshToken,
+        refreshTokenExpirationAt: refreshTokenExpirationAt,
+      },
+    });
+
+    const createLoginTokenSpy = jest.spyOn(createToken, 'createLoginToken');
+    const createRefreshTokenSpy = jest.spyOn(createToken, 'createRefreshToken');
+
+    const mockLoginTokenInfo = {
+      // 48文字の文字列
+      loginToken: '000000000000000000000000000000000000000000000000',
+      loginTokenExpirationAt: new Date(
+        new Date().setMinutes(new Date().getMinutes() + 30)
+      ).toISOString(),
+    };
+
+    const mockRefreshTokenInfo = {
+      refreshToken: '111111111111111111111111111111111111111111111111',
+      refreshTokenExpirationAt: new Date(
+        new Date().setMonth(new Date().getMonth() + 6)
+      ).toISOString(),
+    };
+
+    createLoginTokenSpy.mockImplementationOnce(async () => mockLoginTokenInfo);
+    createRefreshTokenSpy.mockImplementationOnce(
+      async () => mockRefreshTokenInfo
+    );
+
+    const response = await request(app)
+      .post('/api/v0/auth/refresh')
+      .auth(refreshToken, { type: 'bearer' });
+
+    expect(response.status).toBe(200);
+
+    expect(response.body).toEqual({
+      ...mockLoginTokenInfo,
+      ...mockRefreshTokenInfo,
+    });
+
+    expect(
+      JSON.parse(
+        JSON.stringify(
+          await prisma.user.findUnique({
+            where: {
+              email: apiRefreshTestEmail,
+            },
+            select: {
+              loginToken: true,
+              loginTokenExpirationAt: true,
+              refreshToken: true,
+              refreshTokenExpirationAt: true,
+            },
+          })
+        )
+      )
+    ).toEqual({
+      ...mockLoginTokenInfo,
+      ...mockRefreshTokenInfo,
+    });
+  });
+
+  // TODO 確認できないトークンでpostされたときのテストの実装
+  test('確認できないトークンでpostされたときのテスト', async () => {});
+});
+
 describe('/api/v0/users/me', () => {
   test('getしたときのテスト', async () => {
     const profileTestEmail = 'profiletest@example.com';
