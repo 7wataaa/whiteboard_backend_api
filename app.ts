@@ -5,11 +5,15 @@ import createError from 'http-errors';
 import logger from 'morgan';
 import { router as pingRouter } from './routes/v0/ping';
 import { router as registerRouter } from './routes/v0/auth/register';
+import { router as meRouter } from './routes/v0/users/me';
 
 const app = express();
 
 import swaggerUi from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
+import passport from 'passport';
+import { Strategy as BearerTokenStrategy } from 'passport-http-bearer';
+import { prisma } from './prismaClient';
 
 // view engine setup
 app.set('views', 'views');
@@ -48,8 +52,29 @@ app.use(
   swaggerUi.setup(swaggerJSDoc(swaggerOptions))
 );
 
+passport.use(
+  new BearerTokenStrategy(async (token, done) => {
+    const user = await prisma.user.findUnique({
+      where: { loginToken: token },
+    });
+
+    if (
+      !user ||
+      +new Date() > +new Date(user.loginTokenExpirationAt) ||
+      +new Date() > +new Date(user.refreshTokenExpirationAt)
+    ) {
+      return done(null, false, 'invalid_token');
+    }
+
+    return done(null, user);
+  })
+);
+
+app.use(passport.initialize());
+
 app.use('/api/v0/', pingRouter);
 app.use('/api/v0/', registerRouter);
+app.use('/api/v0/', meRouter);
 
 // catch 404 and forward to error handler
 app.use((req: Request, res: Response, next: NextFunction) => {
