@@ -3,8 +3,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const prisma = (() => {
-  console.log(process.env.TEST_DATABASE_URL);
   console.log(process.env.DATABASE_URL);
+
+  if (!process.env.DATABASE_URL) {
+    throw Error('DBのURLがうまく設定できてない');
+  }
 
   return new PrismaClient({
     datasources: {
