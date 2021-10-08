@@ -7,6 +7,47 @@ import { prisma } from '../../../prismaClient';
 
 export const router = Router();
 
+/**
+ * @swagger
+ * /api/v0/auth/refresh:
+ *  post:
+ *    description: >-
+ *      Receive a refresh token, and update the user's refreshToken and
+ *      loginToken, and returns them.
+ *    parameters:
+ *      - name: token
+ *        in: header
+ *        required: true
+ *        type: string
+ *    responses:
+ *      '200':
+ *        description: Successful processing.
+ *        schema:
+ *          type: object
+ *          properties:
+ *            loginToken:
+ *              type: string
+ *              format: email
+ *              description: accsess_token.
+ *              example: OlYZVpqN8l9pQs2iyHLPaF93cgwJ8XUVeSRdPpsuBNbLRpuw
+ *            loginTokenExpirationAt:
+ *              type: string
+ *              format: uuid
+ *              description: Access token expiration date. ISO format.
+ *              example: '2022-04-08T12:26:58.981Z'
+ *            refreshToken:
+ *              type: string
+ *              format: email
+ *              description: refresh_token.
+ *              example: OlYZVpqN8l9pQs2iyHLPaF93cgwJ8XUVeSRdPpsuBNbLRpuw
+ *            refreshTokenExpirationAt:
+ *              type: string
+ *              format: uuid
+ *              description: Refresh token expiration date. ISO format.
+ *              example: '2022-04-08T12:26:58.981Z'
+ *      '400':
+ *        description: Processing failure.
+ */
 router.post(
   '/auth/refresh',
   // 適切なrefreshトークンでなければ弾く
