@@ -3,18 +3,17 @@ import express, { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import createError from 'http-errors';
 import logger from 'morgan';
-import { router as pingRouter } from './routes/v0/ping';
-import { router as registerRouter } from './routes/v0/auth/register';
-import { router as meRouter } from './routes/v0/users/me';
-import { router as refreshRouter } from './routes/v0/auth/refresh';
-
-const app = express();
-
-import swaggerUi from 'swagger-ui-express';
-import swaggerJSDoc from 'swagger-jsdoc';
 import passport from 'passport';
 import { Strategy as BearerTokenStrategy } from 'passport-http-bearer';
+import swaggerJSDoc from 'swagger-jsdoc';
+import swaggerUi from 'swagger-ui-express';
 import { prisma } from './prismaClient';
+import { router as refreshRouter } from './routes/v0/auth/refresh';
+import { router as registerRouter } from './routes/v0/auth/register';
+import { router as pingRouter } from './routes/v0/ping';
+import { router as meRouter } from './routes/v0/users/me';
+
+const app = express();
 
 // view engine setup
 app.set('views', 'views');
@@ -35,6 +34,7 @@ app.use(helmet.permittedCrossDomainPolicies());
 
 const swaggerOptions: swaggerJSDoc.Options = {
   swaggerDefinition: {
+    swagger: '2.0',
     info: {
       title: 'Express TypeScript',
       version: '0.1.0',
