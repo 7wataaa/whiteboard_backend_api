@@ -26,7 +26,7 @@ jobs:
           DATABASE_URL: 'postgresql://postgres:postgres@db:5432/whiteboard'
           TEST_DATABASE_URL: 'postgresql://postgres:postgres@db:5432/test'
         run: |
-          docker-compose exec -T app env DATABASE_URL="$TEST_DATABASE_URL" npx prisma migrate reset --force
+          docker-compose exec -T app env DATABASE_URL="$TEST_DATABASE_URL" npx prisma migrate reset --force --skip-seed
 
       - name: Start test
         env:
