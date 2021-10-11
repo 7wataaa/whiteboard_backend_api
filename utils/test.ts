@@ -9,6 +9,7 @@ import { refresh } from '../model/refresh';
 import { prisma } from '../prismaClient';
 import { deleteUser } from './deleteUser';
 dotenv.config();
+import { createUser } from './createUser';
 
 const createLoginToken = createToken.createLoginToken;
 const createRefreshToken = createToken.createRefreshToken;
@@ -534,3 +535,49 @@ describe('/api/v0/users/me', () => {
     expect(response.status).toBe(401);
   });
 });
+
+describe('/api/v0/rooms', () => {
+  test('postしたときのテスト', async () => {
+    const roomsPostTestEmail = 'roomsposttest@example.com';
+    const roomsPostTestPass = 'password';
+
+    const user = await createUser(roomsPostTestEmail, roomsPostTestPass);
+    const userTokens = user.body as createToken.LoginToken &
+      createToken.RefreshToken;
+
+    const response = await request(app)
+      .post('/api/v0/rooms/create')
+      .auth(userTokens.loginToken, { type: 'bearer' })
+      .send({
+        name: 'test-room',
+      })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      name: expect.stringMatching(/\w{3,10}/),
+      roomId: expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+      ),
+      createdAt: expect.stringMatching(/Z|[+-](0\d|1[012])(:?[012345]\d)?/),
+    });
+
+    expect(
+      await prisma.room.findUnique({
+        where: {
+          id: response.body['roomId'],
+        },
+      })
+    ).not.toBe(null);
+  });
+
+  // TODO room nameのバリデーションのテスト
+});
+
+/* describe('/api/v0/rooms/:id/posts', () => {
+  test('');
+});
+
+describe('/api/v0/rooms/:id/posts/:id', () => {
+  test('');
+});
+ */
