@@ -41,7 +41,7 @@ model Room {
   joinedUsers User[]
   name        String
   createdAt   DateTime     @default(now()) @map("created_at")
-  updateAt    DateTime     @map("update_at")
+  updateAt    DateTime     @default(now()) @map("update_at")
   UserInRoom  UserInRoom[]
 
   @@map("room")
