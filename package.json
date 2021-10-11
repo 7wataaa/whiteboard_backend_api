@@ -13,7 +13,7 @@
   "scripts": {
     "start": "node ./bin/www",
     "dev": "rm -rf dist && set DEBUG=express-typescript:* & tsc-watch --noClear --onSuccess \"env DATABASE_URL=\"postgresql://postgres:postgres@db:5432/test\" node ./bin/www\"",
-    "test": "DATABASE_URL=\"postgresql://postgres:postgres@db:5432/test\" npx prisma migrate reset --force && env DATABASE_URL=\"postgresql://postgres:postgres@db:5432/test\" jest --coverage --forceExit --detectOpenHandles"
+    "test": "DATABASE_URL=\"postgresql://postgres:postgres@db:5432/test\" npx prisma migrate reset --force --skip-seed && env DATABASE_URL=\"postgresql://postgres:postgres@db:5432/test\" jest --coverage --forceExit --detectOpenHandles"
   },
   "dependencies": {
     "bcrypt": "^5.0.1",
