@@ -15,7 +15,7 @@ export const router = Router();
  *      Receive a refresh token, and update the user's refreshToken and
  *      loginToken, and returns them.
  *    parameters:
- *      - name: token
+ *      - name: Authorization
  *        in: header
  *        required: true
  *        type: string

@@ -6,12 +6,31 @@ export const router = Router();
 
 /**
  * @swagger
- * /api/v0/users/me:
- *  get:
- *    description: id, username, emailを返す
- *    responses:
- *      - 200:
- *
+ *  /api/v0/users/me:
+ *    get:
+ *      description: Return the information of the owner of loginToken.
+ *      parameters:
+ *      - in: header
+ *        name: Authorization
+ *        type: string
+ *        required: true
+ *      responses:
+ *        200:
+ *          description: Return Token owner's information.
+ *          schema:
+ *            type: object
+ *            properties:
+ *              id:
+ *                type: string
+ *                format: uuid
+ *              username:
+ *                type: string
+ *                description: loginToken owner's username
+ *              email:
+ *               type: string
+ *               description: loginToken owner's email
+ *        401:
+ *          description: Unauthorized
  */
 router.get(
   '/users/me',
