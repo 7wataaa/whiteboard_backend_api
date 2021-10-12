@@ -18,6 +18,8 @@ afterEach(async () => {
   jest.restoreAllMocks();
 
   await prisma.user.deleteMany();
+  await prisma.room.deleteMany();
+  await prisma.userInRoom.deleteMany();
 });
 
 /* 処理等のテスト */
