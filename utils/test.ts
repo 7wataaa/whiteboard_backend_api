@@ -570,7 +570,25 @@ describe('/api/v0/rooms', () => {
     ).not.toBe(null);
   });
 
-  // TODO room nameのバリデーションのテスト
+  test('room nameのバリデーションのテスト', async () => {
+    const roomsPostValidationTestEmail = 'roomspostvalidationtest@example.com';
+    const roomsPostValidationTestPass = 'password';
+
+    const user = await createUser(
+      roomsPostValidationTestEmail,
+      roomsPostValidationTestPass
+    );
+    const userTokens = user.body as createToken.LoginToken &
+      createToken.RefreshToken;
+
+    const response = await request(app)
+      .post('/api/v0/rooms/create')
+      .auth(userTokens.loginToken, { type: 'bearer' })
+      .send({
+        name: '',
+      })
+      .expect(400);
+  });
 });
 
 /* describe('/api/v0/rooms/:id/posts', () => {
