@@ -44,7 +44,7 @@ router.post(
   async (req: Request, res: Response) => {
     const isUser = (user: any): user is User => user.id != null;
 
-    if (!isUser(req.user)) {
+    if (!isUser(req.user) || !req.user) {
       res.sendStatus(500);
       return;
     }
@@ -56,7 +56,7 @@ router.post(
       return;
     }
 
-    const room = await createRoom(roomname);
+    const room = await createRoom(roomname, req.user);
 
     res.status(200).json({
       roomId: room.id,
