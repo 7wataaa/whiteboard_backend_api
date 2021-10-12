@@ -590,6 +590,42 @@ describe('/api/v0/rooms', () => {
       })
       .expect(400);
   });
+
+  test('作成したユーザーがその部屋に入っているか', async () => {
+    const roomPostUserJoinedTestEmail = 'roompostuserjoinedtest@example.com';
+    const roomPostUserJoinedTestPass = 'password';
+
+    const user = await createUser(
+      roomPostUserJoinedTestEmail,
+      roomPostUserJoinedTestPass
+    );
+
+    const userTokens = user.body as createToken.LoginToken &
+      createToken.RefreshToken;
+
+    const response = await request(app)
+      .post('/api/v0/rooms/create')
+      .auth(userTokens.loginToken, { type: 'bearer' })
+      .send({ name: 'roomuserjoinedtestroom' })
+      .expect(200);
+
+    const room = await prisma.room.findUnique({
+      where: {
+        id: response.body['roomId'],
+      },
+      include: {
+        joinedUsers: true,
+      },
+    });
+
+    expect(room.joinedUsers).toEqual([
+      await prisma.user.findUnique({
+        where: {
+          email: roomPostUserJoinedTestEmail,
+        },
+      }),
+    ]);
+  });
 });
 
 /* describe('/api/v0/rooms/:id/posts', () => {
