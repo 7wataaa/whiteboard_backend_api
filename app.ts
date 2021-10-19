@@ -13,6 +13,7 @@ import { router as registerRouter } from './routes/v0/auth/register';
 import { router as pingRouter } from './routes/v0/ping';
 import { router as meRouter } from './routes/v0/users/me';
 import { router as createRoomRouter } from './routes/v0/rooms/create';
+import { User } from './model/user';
 
 const app = express();
 
@@ -53,15 +54,9 @@ app.use(
 
 passport.use(
   new BearerTokenStrategy(async (token, done) => {
-    const user = await prisma.user.findUnique({
-      where: { loginToken: token },
-    });
+    const user = await User.findUserByLoginToken(token);
 
-    if (
-      !user ||
-      +new Date() > +new Date(user.loginTokenExpirationAt) ||
-      +new Date() > +new Date(user.refreshTokenExpirationAt)
-    ) {
+    if (!user || !user.validToken || new Date() > user.validToken.createdAt) {
       return done(null, false, 'invalid_token');
     }
 

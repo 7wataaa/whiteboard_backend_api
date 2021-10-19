@@ -1,9 +1,7 @@
 import { Request, Response, Router } from 'express';
-import {
-  createLoginToken,
-  createRefreshToken,
-} from '../../../model/createToken';
+
 import { prisma } from '../../../prismaClient';
+import { User } from '../../../model/user';
 
 export const router = Router();
 
@@ -78,50 +76,17 @@ router.post(
   },
   async (req: Request, res: Response) => {
     const token = req.headers.authorization!.split(' ')[1];
-    const user = await prisma.user.findUnique({
-      where: {
-        refreshToken: token,
-      },
-    });
+    const user = await User.findUserByRefreshToken(token);
 
-    if (!user) {
+    if (!user || !user.validToken) {
       res.sendStatus(400);
       return;
     }
-
-    // リフレッシュトークンの有効期限が切れていないか
-    if (new Date(user.refreshTokenExpirationAt) <= new Date()) {
-      res.sendStatus(400);
-      return;
-    }
-
-    const loginTokenInfo = await createLoginToken();
-    const refreshTokenInfo = await createRefreshToken();
-
-    const refreshedUserTokenInfos = await prisma.user.update({
-      where: {
-        refreshToken: token,
-      },
-      data: {
-        ...loginTokenInfo,
-        ...refreshTokenInfo,
-      },
-      select: {
-        loginToken: true,
-        loginTokenExpirationAt: true,
-        refreshToken: true,
-        refreshTokenExpirationAt: true,
-      },
-    });
 
     res.status(200).json({
-      ...refreshedUserTokenInfos,
-      loginTokenExpirationAt: new Date(
-        refreshedUserTokenInfos.loginTokenExpirationAt
-      ).toISOString(),
-      refreshTokenExpirationAt: new Date(
-        refreshedUserTokenInfos.refreshTokenExpirationAt
-      ).toISOString(),
+      createdAt: user.validToken.createdAt.toISOString(),
+      loginToken: user.validToken.loginToken,
+      refreshToken: user.validToken.refreshToken,
     });
   }
 );

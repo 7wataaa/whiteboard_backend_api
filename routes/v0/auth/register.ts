@@ -1,10 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../../../prismaClient';
 import * as bcrypt from 'bcrypt';
-import {
-  createLoginToken,
-  createRefreshToken,
-} from '../../../model/createToken';
+import { User } from '../../../model/user';
 
 export const router = Router();
 
@@ -60,29 +57,9 @@ router.post('/auth/register', async (req: Request, res: Response) => {
     return;
   }
 
-  const aleadyExistsUser = (async () => {
-    const users = prisma.user.findMany({
-      where: {
-        email: email,
-      },
-      select: {
-        id: true,
-        hashedPassword: true,
-      },
-    });
+  const aleadyExistsUser = await User.findFirstUserByEmail(email);
 
-    for (const e of await users) {
-      if (bcrypt.compareSync(password, e.hashedPassword)) {
-        return await prisma.user.findUnique({
-          where: {
-            id: e.id,
-          },
-        });
-      }
-    }
-  })();
-
-  if (await aleadyExistsUser) {
+  if (aleadyExistsUser) {
     res.status(409);
     res.json({
       code: 409,
@@ -91,30 +68,15 @@ router.post('/auth/register', async (req: Request, res: Response) => {
     return;
   }
 
-  const loginToken = createLoginToken();
-  const refreshToken = createRefreshToken();
-
-  const newUser = await prisma.user
-    .create({
-      data: {
-        email: email,
-        hashedPassword: bcrypt.hashSync(password, 10),
-        username: '',
-        ...(await loginToken),
-        ...(await refreshToken),
-      },
-    })
-    .catch((e) => {
-      console.info(e);
-      return null;
-    });
+  const newUser = await User.createUserByEmailAndPassword(email, password, '');
 
   if (newUser) {
     res.status(200);
     // TODO トークンを返却するときの方法を決める(例: どこかしらのヘッダーに入れるなど)
     res.json({
-      ...(await loginToken),
-      ...(await refreshToken),
+      loginToken: newUser.validToken?.loginToken,
+      refreshToken: newUser.validToken?.refreshToken,
+      createdAt: newUser.validToken?.createdAt.toISOString(),
     });
   } else {
     res.status(500);
