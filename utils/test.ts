@@ -3,288 +3,223 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import request from 'supertest';
 import { app } from '../app';
-import * as createToken from '../model/createToken';
-import { login } from '../model/login';
-import { refresh } from '../model/refresh';
+import { User } from '../model/user';
 import { prisma } from '../prismaClient';
-import { deleteUser } from './deleteUser';
 dotenv.config();
-import { createUser } from './createUser';
 
-const createLoginToken = createToken.createLoginToken;
-const createRefreshToken = createToken.createRefreshToken;
+const tokenRegExp = /^[\-\~\+\/\w]{48}$/;
 
 afterEach(async () => {
   jest.restoreAllMocks();
 
-  await prisma.user.deleteMany();
   await prisma.room.deleteMany();
+  await prisma.token.deleteMany();
+  await prisma.user.deleteMany();
 });
 
 /* 処理等のテスト */
 
-describe('/app.ts', () => {
+describe('/model/user.ts', () => {
+  test('email, passでトークンが適切に生成されるか', async () => {
+    const createTestEmail = 'createtest@example.com';
+    const createTestPassword = 'password';
+
+    const user = await User.createUserByEmailAndPassword(
+      createTestEmail,
+      createTestPassword,
+      ''
+    );
+
+    expect(user.validToken.loginToken).toMatch(tokenRegExp);
+    expect(user.validToken.refreshToken).toMatch(tokenRegExp);
+  });
+
+  test('ログイントークンがかぶった場合に再生成されるか', async () => {
+    const loginTokenDuplicationTestEmail =
+      'logintokenduplicationtest@example.com';
+    const loginTokenDuplicationTestPass = 'password';
+
+    const loginTokenDuplicationTestToken =
+      'zTrGJKGJTSMB5NpeA7Xi5AGphKPHwyKNYzSEwxjRNhMhKyps';
+
+    // 次回作成時に設定したトークンを返す
+    const createLoginTokenSpy = jest.spyOn(User as any, 'createLoginToken');
+    createLoginTokenSpy.mockImplementationOnce(
+      async () => loginTokenDuplicationTestToken
+    );
+
+    const existUser = await User.createUserByEmailAndPassword(
+      'logintokenduplicationtestexistuser@example.com',
+      'password',
+      'kaburu-user'
+    );
+
+    const testUser = await User.createUserByEmailAndPassword(
+      loginTokenDuplicationTestEmail,
+      loginTokenDuplicationTestPass,
+      'testuser'
+    );
+
+    expect(testUser.validToken.loginToken).toMatch(tokenRegExp);
+    expect(testUser.validToken.loginToken).not.toBe(
+      loginTokenDuplicationTestToken
+    );
+  });
+
+  test('リフレッシュトークンがかぶった場合に再生成されるか', async () => {
+    const refreshTokenDuplicationTestEmail =
+      'refreshduplicationtest@example.com';
+    const refreshTokenDuplicationTestPass = 'password';
+
+    const refreshTokenDuplicationTestToken =
+      'zTrGJKGJTSMB5NpeA7Xi5AGphKPHwyKNYzSEwxjRNhMhKyps';
+
+    // 次回作成時に設定したトークンを返す
+    const createRefreshTokenSpy = jest.spyOn(User as any, 'createRefreshToken');
+    createRefreshTokenSpy.mockImplementationOnce(
+      async () => refreshTokenDuplicationTestToken
+    );
+
+    const existUser = await User.createUserByEmailAndPassword(
+      'logintokenduplicationtestexistuser@example.com',
+      'password',
+      'kaburu-user'
+    );
+
+    const testUser = await User.createUserByEmailAndPassword(
+      refreshTokenDuplicationTestEmail,
+      refreshTokenDuplicationTestPass,
+      'testuser'
+    );
+
+    expect(testUser.validToken.refreshToken).toMatch(tokenRegExp);
+    expect(testUser.validToken.refreshToken).not.toBe(
+      refreshTokenDuplicationTestToken
+    );
+  });
+
+  test('トークンから正しくユーザーデータを取得できるか', async () => {
+    const findByTokenTestEmail = 'findbytokentest@example.com';
+    const findByTokenTestPass = 'password';
+
+    const user = await User.createUserByEmailAndPassword(
+      findByTokenTestEmail,
+      findByTokenTestPass,
+      ''
+    );
+
+    const findResult = await User.findUserByLoginToken(
+      user.validToken.loginToken
+    );
+
+    expect(findResult).toStrictEqual(user);
+  });
+
+  test('ログイントークンに合致するユーザーがいなかったときのテスト', async () => {
+    const loginTokenNotMatchTestToken =
+      'zTrGJKGJTSMB5NpeA7Xi5AGphKPHwyKNYzSEwxjRNhMhKypa';
+
+    const findResult = await User.findUserByLoginToken(
+      loginTokenNotMatchTestToken
+    );
+
+    expect(findResult).toBe(null);
+  });
+
+  test('リフレッシュ時に正しくトークンが置き換わるか', async () => {
+    const regenerateTestEmail = 'regeneratetest@example.com';
+    const regenerateTestPass = 'password';
+
+    const beforeRegenerateLoginToken =
+      'BLrGJKGJTSMB5NpeA7Xi5AGphKPHwyKNYzSEwxjRNhMhoyps';
+    const beforeRegenerateRefreshToken =
+      'BRrGJKGJTSMB5NpeA7Xi5AGphKPHwyKNYzSEwxjRNhppKyps';
+
+    const user = await prisma.user.create({
+      data: {
+        email: regenerateTestEmail,
+        hashedPassword: bcrypt.hashSync(regenerateTestPass, 10),
+        username: '',
+        tokens: {
+          create: {
+            loginToken: beforeRegenerateLoginToken,
+            refreshToken: beforeRegenerateRefreshToken,
+          },
+        },
+      },
+      include: {
+        rooms: true,
+        tokens: true,
+      },
+    });
+
+    const regeneratedUser = await (
+      await User.findUserById(user.id)
+    ).regenerateUsersTokens(beforeRegenerateRefreshToken);
+
+    expect(regeneratedUser.id).toEqual(user.id);
+
+    expect(regeneratedUser.validToken.loginToken).toMatch(tokenRegExp);
+    expect(regeneratedUser.validToken.refreshToken).toMatch(tokenRegExp);
+
+    expect(regeneratedUser.validToken.loginToken).not.toBe(
+      beforeRegenerateLoginToken
+    );
+
+    expect(regeneratedUser.validToken.refreshToken).not.toBe(
+      beforeRegenerateRefreshToken
+    );
+  });
+
+  test('リフレッシュ後のトークンがリフレッシュ前と同じものになってしまわないかのテスト', async () => {
+    const refreshTokenSameAsBeforeTestEmail =
+      'refreshtokensameasbeforetest@example.com';
+
+    const existRefreshToken =
+      'EXISTREFRESH5NpeA7Xi5AGphKPHwyKNYzSEwxjRNhMhKyps';
+    const existLoginToken = 'EXISTLOGINMB5NpeA7Xi5AGphKPHwyKNYzSEwxjRNhMhKyps';
+
+    const user = await prisma.user.create({
+      data: {
+        email: refreshTokenSameAsBeforeTestEmail,
+        hashedPassword: '',
+        username: '',
+        tokens: {
+          create: {
+            loginToken: existLoginToken,
+            refreshToken: existRefreshToken,
+          },
+        },
+      },
+    });
+
+    const randomBytesSpy = jest.spyOn(crypto, 'randomBytes');
+    randomBytesSpy.mockImplementationOnce(() => existLoginToken);
+    randomBytesSpy.mockImplementationOnce(() => existRefreshToken);
+
+    const newUser = await (
+      await User.findUserById(user.id)
+    ).regenerateUsersTokens(existRefreshToken);
+
+    expect(newUser.validToken.loginToken).toMatch(tokenRegExp);
+    expect(newUser.validToken.refreshToken).toMatch(tokenRegExp);
+
+    expect(newUser.validToken.loginToken).not.toBe(existLoginToken);
+    expect(newUser.validToken.refreshToken).not.toBe(existRefreshToken);
+  });
+
+  // TODO 期限切れ時のテストの実装
+});
+
+/* URL叩くテスト */
+
+/* describe('/', () => {
   test('ルートパスをgetしたときのテスト', async () => {
     const response = await request(app).get('/');
     expect(response.status).toBe(404);
     expect(response.text).toBe('Not Found');
   });
 });
-
-const existTokenBuffer = crypto.randomBytes(48);
-
-describe('/model/createToken.ts', () => {
-  test('ログイントークンが適切に生成されるか', async () => {
-    const now = new Date();
-
-    const { loginToken, loginTokenExpirationAt } = await createLoginToken();
-
-    expect(loginToken).toHaveLength(48);
-    expect(loginTokenExpirationAt).toMatch(/Z|[+-](0\d|1[012])(:?[012345]\d)?/);
-
-    const loginTokenExpirationDate = new Date(loginTokenExpirationAt);
-
-    // 前と今の差が-5000mx+30分以上～30分以下だとOK
-
-    const thirtyMinutes = 1800000;
-
-    const diff = loginTokenExpirationDate.getTime() - new Date().getTime();
-
-    expect(diff).toBeGreaterThanOrEqual(thirtyMinutes - 5000);
-    expect(diff).toBeLessThanOrEqual(thirtyMinutes);
-  });
-
-  test('ログイントークンがかぶった場合に再生成されるか', async () => {
-    const loginTokenTestEmail = 'logintokentest@example.com';
-
-    const CryptoRandomBytesSpy = jest.spyOn(crypto, 'randomBytes');
-
-    CryptoRandomBytesSpy.mockImplementationOnce((num: number) => {
-      return existTokenBuffer;
-    });
-
-    const existLoginToken = existTokenBuffer
-      .toString('base64')
-      .substring(0, 48);
-
-    await prisma.user.create({
-      data: {
-        username: 'testuser',
-        email: loginTokenTestEmail,
-        hashedPassword: '',
-        loginToken: existLoginToken,
-        loginTokenExpirationAt: new Date(new Date().getTime() + 30 * 60 * 1000),
-        refreshToken: '',
-        refreshTokenExpirationAt: new Date(
-          new Date().getTime() + 30 * 24 * 60 * 60 * 1000
-        ),
-      },
-    });
-
-    const { createLoginToken } = await import('../model/createToken');
-
-    const { loginToken } = await createLoginToken();
-
-    expect(loginToken).not.toBe(existLoginToken);
-
-    CryptoRandomBytesSpy.mockRestore();
-
-    await deleteUser(prisma, loginTokenTestEmail);
-  });
-
-  test('リフレッシュトークンが適切に生成されるか', async () => {
-    const { refreshToken, refreshTokenExpirationAt } =
-      await createRefreshToken();
-
-    expect(refreshToken).toHaveLength(48);
-    expect(refreshTokenExpirationAt).toMatch(
-      /Z|[+-](0\d|1[012])(:?[012345]\d)?/
-    );
-
-    const refreshTokenExpirationDate = new Date(refreshTokenExpirationAt);
-
-    // 前と後の差がミリ秒で-2日+6ヶ月以上～6ヶ月以下だとOK
-
-    const sixMonthAsMillisecond = 15778800000;
-    const sixMonthMinusTwoDateAsMillisecond = sixMonthAsMillisecond - 172800000;
-
-    const dateDifference =
-      refreshTokenExpirationDate.getTime() - new Date().getTime();
-
-    expect(dateDifference).toBeLessThanOrEqual(sixMonthAsMillisecond);
-    expect(dateDifference).toBeGreaterThanOrEqual(
-      sixMonthMinusTwoDateAsMillisecond
-    );
-  });
-
-  test('リフレッシュトークンがかぶった場合に再生成されるか', async () => {
-    const refreshTokenTestEmail = 'refreshtokentest@example.com';
-
-    const CryptoRandomBytesSpy = jest.spyOn(crypto, 'randomBytes');
-
-    CryptoRandomBytesSpy.mockImplementationOnce((num: number) => {
-      return existTokenBuffer;
-    });
-
-    const existRefreshToken = existTokenBuffer
-      .toString('base64')
-      .substring(0, 48);
-
-    await prisma.user.create({
-      data: {
-        username: 'testuser',
-        email: refreshTokenTestEmail,
-        hashedPassword: '',
-        loginToken: '',
-        loginTokenExpirationAt: new Date(new Date().getTime() + 30 * 60 * 1000),
-        refreshToken: existRefreshToken,
-        refreshTokenExpirationAt: new Date(
-          new Date().getTime() + 30 * 24 * 60 * 60 * 1000
-        ),
-      },
-    });
-
-    const { createRefreshToken } = await import('../model/createToken');
-
-    const { refreshToken } = await createRefreshToken();
-
-    expect(refreshToken).not.toBe(existRefreshToken);
-
-    CryptoRandomBytesSpy.mockRestore();
-
-    await deleteUser(prisma, refreshTokenTestEmail);
-  });
-});
-
-describe('/model/login.ts', () => {
-  test('正しくユーザーデータを取得できるか', async () => {
-    const loginTestEmail = 'logintestemail@example.com';
-    const loginTestPassword = 'password';
-    const { loginToken, loginTokenExpirationAt } = await createLoginToken();
-
-    const { refreshToken, refreshTokenExpirationAt } =
-      await createRefreshToken();
-
-    await prisma.user.create({
-      data: {
-        username: 'logintest',
-        email: loginTestEmail,
-        hashedPassword: bcrypt.hashSync(loginTestPassword, 10),
-        loginToken: loginToken,
-        loginTokenExpirationAt: loginTokenExpirationAt,
-        refreshToken: refreshToken,
-        refreshTokenExpirationAt: refreshTokenExpirationAt,
-      },
-    });
-
-    const loginTestUser = await login(loginToken);
-
-    expect(loginTestUser.username).toBe('logintest');
-    expect(loginTestUser.email).toBe(loginTestEmail);
-    expect(
-      bcrypt.compareSync(loginTestPassword, loginTestUser.hashedPassword)
-    ).toBeTruthy();
-
-    await deleteUser(prisma, loginTestEmail);
-  });
-
-  test('ログイントークンに合致するユーザーがいなかったときのテスト', async () => {
-    const loginFailureToken =
-      'loginFailureToken1234512345123451234512345123451';
-
-    const loginTestUser = await login(loginFailureToken);
-
-    expect(loginTestUser).toBe(null);
-  });
-
-  // TODO 期限切れ時のテストの実装
-});
-
-describe('/model/refresh.ts', () => {
-  test('正しくトークンが置き換わるか', async () => {
-    const refreshTestEmail = 'refreshtest@example.com';
-    const refreshTestPassword = 'refreshTestPass';
-
-    const { loginToken, loginTokenExpirationAt } = await createLoginToken();
-
-    const { refreshToken, refreshTokenExpirationAt } =
-      await createRefreshToken();
-
-    await prisma.user.create({
-      data: {
-        username: 'refreshtest',
-        email: refreshTestEmail,
-        hashedPassword: bcrypt.hashSync(refreshTestPassword, 10),
-        loginToken: loginToken,
-        loginTokenExpirationAt: loginTokenExpirationAt,
-        refreshToken: refreshToken,
-        refreshTokenExpirationAt: refreshTokenExpirationAt,
-      },
-    });
-
-    const newTokens = await refresh(refreshToken);
-
-    const user = await prisma.user.findUnique({
-      where: {
-        email: refreshTestEmail,
-      },
-    });
-
-    expect(user.email).not.toBe(null);
-
-    expect(loginToken).not.toBe(newTokens.loginToken);
-    expect(refreshToken).not.toBe(newTokens.refreshToken);
-
-    expect(user.loginToken).toBe(newTokens.loginToken);
-    expect(user.refreshToken).toBe(newTokens.refreshToken);
-  });
-
-  test('存在しないユーザーがリフレッシュされようとするとnullが返されるか', async () => {
-    const { refreshToken } = await createRefreshToken();
-
-    const newTokens = await refresh(refreshToken);
-
-    expect(newTokens).toBe(null);
-  });
-
-  test('リフレッシュ後のトークンがリフレッシュ前と同じものになってしまわないかのテスト', async () => {
-    const differentRefreshTokenEmail = 'defferentrefreshtokentest@example.com';
-    const differentRefreshTokenPass = 'password';
-
-    const loginInfo = await createLoginToken();
-    const refreshInfo = await createRefreshToken();
-
-    await prisma.user.create({
-      data: {
-        username: 'defferentrefreshtokentest',
-        email: differentRefreshTokenEmail,
-        hashedPassword: bcrypt.hashSync(differentRefreshTokenPass, 10),
-        ...loginInfo,
-        ...refreshInfo,
-      },
-    });
-
-    const createLoginTokenSpy = jest.spyOn(createToken, 'createLoginToken');
-
-    createLoginTokenSpy.mockImplementationOnce(async () => {
-      return loginInfo;
-    });
-
-    const createRefreshTokenSpy = jest.spyOn(createToken, 'createRefreshToken');
-
-    createRefreshTokenSpy.mockImplementationOnce(async () => {
-      return refreshInfo;
-    });
-
-    const newTokens = await refresh(refreshInfo.refreshToken);
-
-    expect(newTokens.loginToken).not.toBe(loginInfo.loginToken);
-
-    expect(newTokens.refreshToken).not.toBe(refreshInfo.refreshToken);
-  });
-});
-
-/* URL叩くテスト */
 
 describe('/api/v0/ping', () => {
   test('getしたときのテスト', async () => {
@@ -626,8 +561,7 @@ describe('/api/v0/rooms', () => {
       }),
     ]);
   });
-});
-
+ */
 /* describe('/api/v0/rooms/:id/posts', () => {
   test('');
 });
