@@ -11,19 +11,16 @@ generator client {
 }
 
 model User {
-  id                       String    @id @default(uuid()) @db.Uuid
-  email                    String    @unique
-  username                 String
-  hashedPassword           String    @map("hashed_password")
-  createdAt                DateTime  @default(now()) @map("created_at")
-  deletedAt                DateTime? @map("deleted_at")
-  updatedAt                DateTime  @default(now()) @map("updated_at")
-  role                     Role      @default(USER)
-  rooms                    Room[]
-  loginToken               String    @unique @map("login_token")
-  loginTokenExpirationAt   DateTime  @map("login_token_expiration_at")
-  refreshToken             String    @unique @map("refresh_token")
-  refreshTokenExpirationAt DateTime  @map("refresh_token_expiration_at")
+  id             String    @id @default(uuid()) @db.Uuid
+  email          String    @unique
+  username       String
+  hashedPassword String    @map("hashed_password")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  deletedAt      DateTime? @map("deleted_at")
+  updatedAt      DateTime  @default(now()) @map("updated_at")
+  role           Role      @default(USER)
+  rooms          Room[]
+  tokens         Token[]
 
   @@map("user")
 }
@@ -43,4 +40,15 @@ model Room {
   updateAt    DateTime @default(now()) @map("update_at")
 
   @@map("room")
+}
+
+model Token {
+  id           String   @id @default(uuid()) @db.Uuid
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String   @map("user_id") @db.Uuid
+  loginToken   String   @unique @map("login_token")
+  refreshToken String   @unique @map("refresh_token")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("token")
 }
