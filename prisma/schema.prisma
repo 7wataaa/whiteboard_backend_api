@@ -25,23 +25,6 @@ model User {
   @@map("user")
 }
 
-enum Role {
-  USER
-  ADMIN
-
-  @@map("role")
-}
-
-model Room {
-  id          String   @id @default(uuid()) @db.Uuid
-  joinedUsers User[]
-  name        String
-  createdAt   DateTime @default(now()) @map("created_at")
-  updateAt    DateTime @default(now()) @map("update_at")
-
-  @@map("room")
-}
-
 model Token {
   id           String   @id @default(uuid()) @db.Uuid
   user         User     @relation(fields: [userId], references: [id])
@@ -51,4 +34,35 @@ model Token {
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@map("token")
+}
+
+enum Role {
+  USER
+  ADMIN
+
+  @@map("role")
+}
+
+model Room {
+  id          String    @id @default(uuid()) @db.Uuid
+  joinedUsers User[]
+  name        String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updateAt    DateTime  @default(now()) @map("update_at")
+  deletedAt   DateTime? @map("deleted_at")
+  Post        Post[]
+
+  @@map("room")
+}
+
+model Post {
+  id        String    @id @default(uuid()) @db.Uuid
+  authorId  String    @db.Uuid
+  roomId    String    @db.Uuid
+  room      Room      @relation(fields: [roomId], references: [id])
+  createdAt DateTime  @default(now()) @map("created_at")
+  updateAt  DateTime  @default(now()) @map("update_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("post")
 }
