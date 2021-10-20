@@ -55,7 +55,7 @@ passport.use(
   new BearerTokenStrategy(async (token, done) => {
     const user = await User.findUserByLoginToken(token);
 
-    if (!user || !user.validToken || new Date() > user.validToken.createdAt) {
+    if (!user || !user.validToken) {
       return done(null, false, 'invalid_token');
     }
 
