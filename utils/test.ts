@@ -8,6 +8,7 @@ import { prisma } from '../prismaClient';
 dotenv.config();
 
 const tokenRegExp = /^[\-\~\+\/\w]{48}$/;
+const iso8601RegExp = /Z|[+-](0\d|1[012])(:?[012345]\d)?/;
 
 afterEach(async () => {
   jest.restoreAllMocks();
@@ -153,9 +154,9 @@ describe('/model/user.ts', () => {
       },
     });
 
-    const regeneratedUser = await (
-      await User.findUserById(user.id)
-    ).regenerateUsersTokens(beforeRegenerateRefreshToken);
+    const regeneratedUser = await User.regenerateUsersToken(
+      user.tokens[0].refreshToken
+    );
 
     expect(regeneratedUser.id).toEqual(user.id);
 
@@ -191,15 +192,18 @@ describe('/model/user.ts', () => {
           },
         },
       },
+      include: {
+        tokens: true,
+      },
     });
 
     const randomBytesSpy = jest.spyOn(crypto, 'randomBytes');
     randomBytesSpy.mockImplementationOnce(() => existLoginToken);
     randomBytesSpy.mockImplementationOnce(() => existRefreshToken);
 
-    const newUser = await (
-      await User.findUserById(user.id)
-    ).regenerateUsersTokens(existRefreshToken);
+    const newUser = await User.regenerateUsersToken(
+      user.tokens[0].refreshToken
+    );
 
     expect(newUser.validToken.loginToken).toMatch(tokenRegExp);
     expect(newUser.validToken.refreshToken).toMatch(tokenRegExp);
@@ -213,7 +217,7 @@ describe('/model/user.ts', () => {
 
 /* URL叩くテスト */
 
-/* describe('/', () => {
+describe('/', () => {
   test('ルートパスをgetしたときのテスト', async () => {
     const response = await request(app).get('/');
     expect(response.status).toBe(404);
@@ -233,45 +237,19 @@ describe('/api/v0/auth/register', () => {
     const postTestEmail = 'usercreatetest@example.com';
     const postTestPassword = 'password';
 
-    const response = await request(app).post('/api/v0/auth/register').send({
-      email: postTestEmail,
-      password: postTestPassword,
-    });
+    const response = await request(app)
+      .post('/api/v0/auth/register')
+      .send({
+        email: postTestEmail,
+        password: postTestPassword,
+      })
+      .expect(200);
 
-    expect(response.status).toBe(200);
     expect(response.type).toBe('application/json');
-
-    const tokenRegExp = /^[\-\~\+\/\w]{48}$/;
 
     expect(response.body['loginToken']).toMatch(tokenRegExp);
     expect(response.body['refreshToken']).toMatch(tokenRegExp);
-
-    // ログイントークンの期限切れ時と今の差が-5000ms+30分以上～30分以下だとOK
-
-    const thirtyMinutes = 1800000;
-
-    const loginTokenTimediff =
-      new Date(response.body['loginTokenExpirationAt']).getTime() -
-      new Date().getTime();
-
-    expect(loginTokenTimediff).toBeGreaterThanOrEqual(thirtyMinutes - 5000);
-    expect(loginTokenTimediff).toBeLessThanOrEqual(thirtyMinutes);
-
-    // リフレッシュトークンの期限切れ時と今の差がミリ秒で-2日+6ヶ月以上～6ヶ月以下だとOK
-
-    const sixMonthAsMillisecond = 15778800000;
-    const sixMonthMinusTwoDateAsMillisecond = sixMonthAsMillisecond - 172800000;
-
-    const refreshTokenTimeDiff =
-      new Date(response.body['refreshTokenExpirationAt']).getTime() -
-      new Date().getTime();
-
-    expect(refreshTokenTimeDiff).toBeLessThanOrEqual(sixMonthAsMillisecond);
-    expect(refreshTokenTimeDiff).toBeGreaterThanOrEqual(
-      sixMonthMinusTwoDateAsMillisecond
-    );
-
-    await deleteUser(prisma, postTestEmail);
+    expect(response.body['createdAt']).toMatch(iso8601RegExp);
   });
 
   test('不正なメアドだったときにエラーが返されるか', async () => {
@@ -307,43 +285,36 @@ describe('/api/v0/auth/register', () => {
         username: 'testuser',
         email: aleadyExistsTestEmail,
         hashedPassword: bcrypt.hashSync(aleadyExistsTestPassword, 10),
-        loginToken: '',
-        loginTokenExpirationAt: new Date(),
-        refreshToken: '',
-        refreshTokenExpirationAt: new Date(),
       },
     });
 
-    const response = await request(app).post('/api/v0/auth/register').send({
-      email: aleadyExistsTestEmail,
-      password: aleadyExistsTestPassword,
-    });
-
-    expect(response.status).toBe(409);
-    expect(response.body['errorMassage']).toBe(
-      'このユーザーはすでに登録されています'
-    );
-
-    await deleteUser(prisma, aleadyExistsTestEmail);
+    const response = await request(app)
+      .post('/api/v0/auth/register')
+      .send({
+        email: aleadyExistsTestEmail,
+        password: aleadyExistsTestPassword,
+      })
+      .expect(409);
   });
 
   test('ユーザーを作成できなかったときにエラーを返されるか', async () => {
     const canNotCreateTestEmail = 'cannotcreatetest@example.com';
     const canNotCreateTestPassword = 'password';
 
-    const prismaUserCreateSpy = jest.spyOn(prisma.user, 'create');
-
-    prismaUserCreateSpy.mockRejectedValue(null);
-
-    const response = await request(app).post('/api/v0/auth/register').send({
-      email: canNotCreateTestEmail,
-      password: canNotCreateTestPassword,
-    });
-
-    expect(response.status).toBe(500);
-    expect(response.body['errorMassage']).toBe(
-      '何らかの理由でユーザーが作成できなかった'
+    const createUserByEmailAndPassword = jest.spyOn(
+      User,
+      'createUserByEmailAndPassword'
     );
+
+    createUserByEmailAndPassword.mockImplementationOnce(null);
+
+    const response = await request(app)
+      .post('/api/v0/auth/register')
+      .send({
+        email: canNotCreateTestEmail,
+        password: canNotCreateTestPassword,
+      })
+      .expect(500);
   });
 });
 
@@ -352,78 +323,32 @@ describe('/api/v0/auth/refresh', () => {
     const apiRefreshTestEmail = 'apirefreshtest@example.com';
     const apiRefreshTestPass = 'password';
 
-    const { loginToken } = await createLoginToken();
-
-    const { refreshToken, refreshTokenExpirationAt } =
-      await createRefreshToken();
-
-    const user = await prisma.user.create({
-      data: {
-        username: 'refreshtest',
-        email: apiRefreshTestEmail,
-        hashedPassword: bcrypt.hashSync(apiRefreshTestPass, 10),
-        loginToken: loginToken,
-        // ログイントークンの期限は切れている想定
-        loginTokenExpirationAt: new Date(1995, 11, 17),
-        refreshToken: refreshToken,
-        refreshTokenExpirationAt: refreshTokenExpirationAt,
-      },
-    });
-
-    const createLoginTokenSpy = jest.spyOn(createToken, 'createLoginToken');
-    const createRefreshTokenSpy = jest.spyOn(createToken, 'createRefreshToken');
-
-    const mockLoginTokenInfo = {
-      // 48文字の文字列
-      loginToken: '000000000000000000000000000000000000000000000000',
-      loginTokenExpirationAt: new Date(
-        new Date().setMinutes(new Date().getMinutes() + 30)
-      ).toISOString(),
-    };
-
-    const mockRefreshTokenInfo = {
-      refreshToken: '111111111111111111111111111111111111111111111111',
-      refreshTokenExpirationAt: new Date(
-        new Date().setMonth(new Date().getMonth() + 6)
-      ).toISOString(),
-    };
-
-    createLoginTokenSpy.mockImplementationOnce(async () => mockLoginTokenInfo);
-    createRefreshTokenSpy.mockImplementationOnce(
-      async () => mockRefreshTokenInfo
+    const user = await User.createUserByEmailAndPassword(
+      apiRefreshTestEmail,
+      apiRefreshTestPass,
+      ''
     );
 
     const response = await request(app)
       .post('/api/v0/auth/refresh')
-      .auth(refreshToken, { type: 'bearer' });
-
-    expect(response.status).toBe(200);
+      .auth(user.validToken.refreshToken, { type: 'bearer' })
+      .expect(200);
 
     expect(response.body).toEqual({
-      ...mockLoginTokenInfo,
-      ...mockRefreshTokenInfo,
+      createdAt: expect.stringMatching(iso8601RegExp),
+      loginToken: expect.not.stringContaining(user.validToken.loginToken),
+      refreshToken: expect.not.stringContaining(user.validToken.refreshToken),
     });
 
     expect(
-      JSON.parse(
-        JSON.stringify(
-          await prisma.user.findUnique({
-            where: {
-              email: apiRefreshTestEmail,
-            },
-            select: {
-              loginToken: true,
-              loginTokenExpirationAt: true,
-              refreshToken: true,
-              refreshTokenExpirationAt: true,
-            },
-          })
-        )
-      )
-    ).toEqual({
-      ...mockLoginTokenInfo,
-      ...mockRefreshTokenInfo,
-    });
+      (
+        await prisma.token.findMany({
+          where: {
+            userId: user.id,
+          },
+        })
+      ).length
+    ).toBe(2);
   });
 
   // TODO 確認できないトークンでpostされたときのテストの実装
@@ -435,26 +360,15 @@ describe('/api/v0/users/me', () => {
     const profileTestEmail = 'profiletest@example.com';
     const profileTestPass = 'password';
 
-    const { loginToken, loginTokenExpirationAt } = await createLoginToken();
-
-    const { refreshToken, refreshTokenExpirationAt } =
-      await createRefreshToken();
-
-    const user = await prisma.user.create({
-      data: {
-        username: 'profiletest',
-        email: profileTestEmail,
-        hashedPassword: bcrypt.hashSync(profileTestPass, 10),
-        loginToken: loginToken,
-        loginTokenExpirationAt: loginTokenExpirationAt,
-        refreshToken: refreshToken,
-        refreshTokenExpirationAt: refreshTokenExpirationAt,
-      },
-    });
+    const user = await User.createUserByEmailAndPassword(
+      profileTestEmail,
+      profileTestPass,
+      'profiletest'
+    );
 
     const response = request(app)
       .get('/api/v0/users/me')
-      .auth(loginToken, { type: 'bearer' });
+      .auth(user.validToken.loginToken, { type: 'bearer' });
 
     expect((await response).status).toBe(200);
 
@@ -477,13 +391,15 @@ describe('/api/v0/rooms', () => {
     const roomsPostTestEmail = 'roomsposttest@example.com';
     const roomsPostTestPass = 'password';
 
-    const user = await createUser(roomsPostTestEmail, roomsPostTestPass);
-    const userTokens = user.body as createToken.LoginToken &
-      createToken.RefreshToken;
+    const user = await User.createUserByEmailAndPassword(
+      roomsPostTestEmail,
+      roomsPostTestPass,
+      ''
+    );
 
     const response = await request(app)
       .post('/api/v0/rooms/create')
-      .auth(userTokens.loginToken, { type: 'bearer' })
+      .auth(user.validToken.loginToken, { type: 'bearer' })
       .send({
         name: 'test-room',
       })
@@ -510,16 +426,15 @@ describe('/api/v0/rooms', () => {
     const roomsPostValidationTestEmail = 'roomspostvalidationtest@example.com';
     const roomsPostValidationTestPass = 'password';
 
-    const user = await createUser(
+    const user = await User.createUserByEmailAndPassword(
       roomsPostValidationTestEmail,
-      roomsPostValidationTestPass
+      roomsPostValidationTestPass,
+      ''
     );
-    const userTokens = user.body as createToken.LoginToken &
-      createToken.RefreshToken;
 
     const response = await request(app)
       .post('/api/v0/rooms/create')
-      .auth(userTokens.loginToken, { type: 'bearer' })
+      .auth(user.validToken.loginToken, { type: 'bearer' })
       .send({
         name: '',
       })
@@ -530,17 +445,15 @@ describe('/api/v0/rooms', () => {
     const roomPostUserJoinedTestEmail = 'roompostuserjoinedtest@example.com';
     const roomPostUserJoinedTestPass = 'password';
 
-    const user = await createUser(
+    const user = await User.createUserByEmailAndPassword(
       roomPostUserJoinedTestEmail,
-      roomPostUserJoinedTestPass
+      roomPostUserJoinedTestPass,
+      ''
     );
-
-    const userTokens = user.body as createToken.LoginToken &
-      createToken.RefreshToken;
 
     const response = await request(app)
       .post('/api/v0/rooms/create')
-      .auth(userTokens.loginToken, { type: 'bearer' })
+      .auth(user.validToken.loginToken, { type: 'bearer' })
       .send({ name: 'roomuserjoinedtestroom' })
       .expect(200);
 
@@ -561,7 +474,7 @@ describe('/api/v0/rooms', () => {
       }),
     ]);
   });
- */
+});
 /* describe('/api/v0/rooms/:id/posts', () => {
   test('');
 });
@@ -569,4 +482,4 @@ describe('/api/v0/rooms', () => {
 describe('/api/v0/rooms/:id/posts/:id', () => {
   test('');
 });
- */
+*/
