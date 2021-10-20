@@ -352,8 +352,20 @@ describe('/api/v0/auth/refresh', () => {
     ).toBe(2);
   });
 
-  // TODO 確認できないトークンでpostされたときのテストの実装
-  test('確認できないトークンでpostされたときのテスト', async () => {});
+  test('文字数が正しくないトークンでpostされたときのテスト', async () => {
+    const unkownToken = 'qwertqwertqwertqwertqwertqwertqwertqwertqwert';
+
+    const response = await request(app)
+      .post('/api/v0/auth/refresh')
+      .auth(unkownToken, { type: 'bearer' })
+      .expect(401);
+  });
+
+  test('トークン無しでpostされたときのテスト', async () => {
+    const response = await request(app)
+      .post('/api/v0/auth/refresh')
+      .expect(401);
+  });
 });
 
 describe('/api/v0/users/me', () => {
