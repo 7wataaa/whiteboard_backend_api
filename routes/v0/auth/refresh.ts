@@ -52,7 +52,7 @@ router.post(
       !req.headers.authorization ||
       req.headers.authorization.split(' ').length != 2
     ) {
-      res.sendStatus(400);
+      res.sendStatus(401);
       return;
     }
 
@@ -66,7 +66,7 @@ router.post(
       authorizationHeader.token.length != 48 ||
       !RegExp(/^[\-\~\+\/\w]{48}$/).test(authorizationHeader.token)
     ) {
-      res.sendStatus(400);
+      res.sendStatus(401);
       return;
     }
 
@@ -77,7 +77,7 @@ router.post(
     const user = await User.findUserByRefreshToken(token);
 
     if (!user || !user.validToken) {
-      res.sendStatus(400);
+      res.sendStatus(401);
       return;
     }
 
