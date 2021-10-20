@@ -237,7 +237,7 @@ export class User {
       return null;
     }
 
-    if (User.isRefreshTokenEnabled(refreshTokenData.createdAt)) {
+    if (!User.isRefreshTokenEnabled(refreshTokenData.createdAt)) {
       return null;
     }
 
