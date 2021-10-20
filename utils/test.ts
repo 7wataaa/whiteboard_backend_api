@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import request from 'supertest';
 import { app } from '../app';
+import { Room } from '../model/room';
 import { User } from '../model/user';
 import { prisma } from '../prismaClient';
 dotenv.config();
@@ -216,6 +217,26 @@ describe('/model/user.ts', () => {
   // TODO 期限切れ時のテストの実装
 });
 
+describe('/model/room.ts', () => {
+  test('部屋が作成できるかのテスト', async () => {
+    const roomName = 'createTestRoom';
+
+    const roomCreateTestEmail = 'roomcreatetest@example.com';
+    const roomCreateTestPass = 'password';
+
+    const createUser = await User.createUserByEmailAndPassword(
+      roomCreateTestEmail,
+      roomCreateTestPass,
+      ''
+    );
+
+    const room = await Room.create(roomName, createUser);
+
+    expect(await prisma.room.findUnique({ where: { id: room.id } })).not.toBe(
+      null
+    );
+  });
+});
 /* URL叩くテスト */
 
 describe('/', () => {
