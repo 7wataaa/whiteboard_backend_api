@@ -1,7 +1,7 @@
-import { User } from '.prisma/client';
 import { Request, Response, Router } from 'express';
 import passport from 'passport';
-import { createRoom } from '../../../model/createRoom';
+import { Room } from '../../../model/room';
+import { User } from '../../../model/user';
 
 export const router = Router();
 
@@ -42,21 +42,28 @@ router.post(
   '/rooms/create',
   passport.authenticate('bearer', { session: false }),
   async (req: Request, res: Response) => {
-    const isUser = (user: any): user is User => user.id != null;
+    const isUser = (obj: any): obj is User =>
+      obj != null &&
+      obj.id != null &&
+      obj.email != null &&
+      obj.hashedPassword != null;
 
-    if (!isUser(req.user) || !req.user) {
+    const user = req.user ?? null;
+
+    if (!user || !isUser(user)) {
+      console.dir(user, { depth: null });
       res.sendStatus(500);
       return;
     }
 
-    const roomname = req.body['name'];
+    const roomName = req.body['name'];
 
-    if (typeof roomname !== 'string' || roomname.length == 0) {
+    if (typeof roomName !== 'string' || roomName.length == 0) {
       res.sendStatus(400);
       return;
     }
 
-    const room = await createRoom(roomname, req.user);
+    const room = await Room.create(roomName, user);
 
     res.status(200).json({
       roomId: room.id,
