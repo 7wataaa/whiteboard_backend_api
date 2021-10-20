@@ -7,13 +7,12 @@ import passport from 'passport';
 import { Strategy as BearerTokenStrategy } from 'passport-http-bearer';
 import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
-import { prisma } from './prismaClient';
+import { User } from './model/user';
 import { router as refreshRouter } from './routes/v0/auth/refresh';
 import { router as registerRouter } from './routes/v0/auth/register';
 import { router as pingRouter } from './routes/v0/ping';
-import { router as meRouter } from './routes/v0/users/me';
 import { router as createRoomRouter } from './routes/v0/rooms/create';
-import { User } from './model/user';
+import { router as meRouter } from './routes/v0/users/me';
 
 const app = express();
 

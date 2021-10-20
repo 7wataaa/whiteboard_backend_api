@@ -1,8 +1,7 @@
 import * as PrismaTypes from '.prisma/client';
-import { prisma } from '../prismaClient';
-import crypto from 'crypto';
-import { assert } from 'console';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+import { prisma } from '../prismaClient';
 
 class UserRepository {
   async findUniqueUserById(userId: string) {

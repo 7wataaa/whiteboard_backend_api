@@ -1,6 +1,4 @@
-import { Router, Request, Response } from 'express';
-import { prisma } from '../../../prismaClient';
-import * as bcrypt from 'bcrypt';
+import { Request, Response, Router } from 'express';
 import { User } from '../../../model/user';
 
 export const router = Router();
