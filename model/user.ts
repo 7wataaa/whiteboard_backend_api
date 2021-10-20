@@ -73,7 +73,7 @@ class UserRepository {
     });
   }
 
-  async updateUserTokens(
+  async createNewUserToken(
     userId: string,
     newLoginToken: string,
     newRefreshToken: string
@@ -84,9 +84,11 @@ class UserRepository {
       },
       data: {
         tokens: {
-          create: {
-            loginToken: newLoginToken,
-            refreshToken: newRefreshToken,
+          createMany: {
+            data: {
+              loginToken: newLoginToken,
+              refreshToken: newRefreshToken,
+            },
           },
         },
       },
@@ -303,18 +305,26 @@ export class User {
     return refreshToken;
   }
 
-  async regenerateUsersTokens(refreshToken: string): Promise<User | null> {
+  static async regenerateUsersToken(
+    refreshToken: string
+  ): Promise<User | null> {
+    const user = await User.findUserByRefreshToken(refreshToken);
+
+    if (!user) {
+      return null;
+    }
+
     let newLoginToken = await User.createLoginToken();
 
     let newRefreshToken = await User.createRefreshToken();
 
-    const updatedToken = await User.repository.updateUserTokens(
-      this.id,
+    const updatedToken = await User.repository.createNewUserToken(
+      user.id,
       newLoginToken,
       newRefreshToken
     );
 
-    const updatedUser = await User.findUserById(this.id);
+    const updatedUser = await User.findUserById(updatedToken.id);
 
     return updatedUser;
   }

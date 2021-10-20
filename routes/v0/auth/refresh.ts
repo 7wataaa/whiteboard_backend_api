@@ -83,10 +83,19 @@ router.post(
       return;
     }
 
+    const newUser = await User.regenerateUsersToken(
+      user.validToken.refreshToken
+    );
+
+    if (!newUser) {
+      res.sendStatus(500);
+      return;
+    }
+
     res.status(200).json({
-      createdAt: user.validToken.createdAt.toISOString(),
-      loginToken: user.validToken.loginToken,
-      refreshToken: user.validToken.refreshToken,
+      createdAt: newUser.validToken!.createdAt.toISOString(),
+      loginToken: newUser.validToken!.loginToken,
+      refreshToken: newUser.validToken!.refreshToken,
     });
   }
 );
