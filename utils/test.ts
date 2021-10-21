@@ -19,6 +19,7 @@ afterEach(async () => {
   await prisma.room.deleteMany();
   await prisma.token.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.token.deleteMany();
 });
 
 /* 処理等のテスト */
