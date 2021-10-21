@@ -370,6 +370,60 @@ describe('/model/room.ts', () => {
       ).rooms.map((e) => e.name)
     ).toEqual([roomName]);
   });
+
+  test('退室できるか', async () => {
+    const user1 = await User.createUserByEmailAndPassword(
+      'exittest1@example.com',
+      'password',
+      ''
+    );
+
+    const room = await Room.create('exittestroom', user1);
+
+    const user2 = await User.createUserByEmailAndPassword(
+      'exittest2@example.com',
+      'password',
+      ''
+    );
+
+    const joinRoom = await Room.joinRoom(
+      user2.id,
+      room.id,
+      room.invitePassword
+    );
+
+    await joinRoom.exit(user2);
+
+    expect(
+      (
+        await prisma.room.findUnique({
+          where: {
+            id: room.id,
+          },
+          include: {
+            joinedUsers: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        })
+      ).joinedUsers
+    ).toStrictEqual([{ id: user1.id }]);
+
+    expect(
+      (
+        await prisma.user.findUnique({
+          where: {
+            id: user2.id,
+          },
+          include: {
+            rooms: true,
+          },
+        })
+      ).rooms
+    ).toStrictEqual([]);
+  });
 });
 
 /* URL叩くテスト */
