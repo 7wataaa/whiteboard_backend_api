@@ -153,4 +153,38 @@ export class Room {
 
     this.invitePassword = roomArgs.invitePassword;
   }
+
+  async exit(user: User) {
+    const userDisconnectResult = await prisma.room.update({
+      where: {
+        id: this.id,
+      },
+      data: {
+        joinedUsers: {
+          disconnect: {
+            email: user.email,
+          },
+        },
+      },
+      include: {
+        joinedUsers: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    const newJoinedUsers = await Promise.all(
+      userDisconnectResult.joinedUsers.map(async (e) => {
+        const user = await User.findUserById(e.id);
+        if (!user) {
+          throw Error('ユーザーが取得できない');
+        }
+        return user;
+      })
+    );
+
+    this.joinedUsers = newJoinedUsers;
+  }
 }
