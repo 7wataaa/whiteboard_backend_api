@@ -254,6 +254,51 @@ describe('/model/room.ts', () => {
 
     expect(room.invitePassword).toMatch(invitePasswordRegExp);
   });
+
+  test('招待パスワードから入室できるか', async () => {
+    const roomName = 'enterroomtestroom';
+
+    const enterRoomTestEmail = 'enterroomtest1@example.com';
+    const enterRoomTestPass = 'password';
+
+    const user = await User.createUserByEmailAndPassword(
+      enterRoomTestEmail,
+      enterRoomTestPass,
+      ''
+    );
+
+    const joinUser = await User.createUserByEmailAndPassword(
+      'enterroomtest2@example.com',
+      'password',
+      ''
+    );
+
+    const room = await Room.create(roomName, user);
+
+    const joinResult = await Room.joinRoom(
+      joinUser.id,
+      room.id,
+      room.invitePassword
+    );
+
+    expect(joinResult.joinedUsers.map((e) => e.id)).toEqual([
+      user.id,
+      joinUser.id,
+    ]);
+
+    expect(
+      (
+        await prisma.user.findUnique({
+          where: {
+            id: joinUser.id,
+          },
+          include: {
+            rooms: true,
+          },
+        })
+      ).rooms.map((e) => e.name)
+    ).toEqual([roomName]);
+  });
 });
 
 /* URL叩くテスト */
