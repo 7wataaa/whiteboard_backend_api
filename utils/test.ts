@@ -69,6 +69,40 @@ describe('/model/user.ts', () => {
     );
   });
 
+  test('ログイントークンが無効なトークンと重複したときに同じトークンになるか', async () => {
+    const email = 'logintokenduplicationbutusefultest1@example.com';
+
+    const oldDuplicationToken =
+      'OLDGJKGJTSMB5NpeA7Xi5AGphKPHwyKNYzSEwxjRNhMhKyps';
+
+    const oldUser = await prisma.user.create({
+      data: {
+        email: email,
+        hashedPassword: '',
+        username: '',
+        tokens: {
+          create: {
+            loginToken: oldDuplicationToken,
+            refreshToken: '',
+            createdAt: new Date(1980, 12, 31),
+          },
+        },
+      },
+    });
+
+    // 次回に同じ文字列を出力する
+    const randomBytesSpy = jest.spyOn(crypto, 'randomBytes');
+    randomBytesSpy.mockImplementationOnce(() => oldDuplicationToken);
+
+    const user = await User.createUserByEmailAndPassword(
+      'logintokenduplicationbutusefultest2@example.com',
+      'password',
+      ''
+    );
+
+    expect(user.validToken.loginToken).toBe(oldDuplicationToken);
+  });
+
   test('リフレッシュトークンがかぶった場合に再生成されるか', async () => {
     const refreshTokenDuplicationTestEmail =
       'refreshduplicationtest@example.com';
@@ -102,6 +136,41 @@ describe('/model/user.ts', () => {
     expect(testUser.validToken.refreshToken).not.toBe(
       refreshTokenDuplicationTestToken
     );
+  });
+
+  test('リフレッシュトークンが無効なトークンと重複したときに同じトークンになるか', async () => {
+    const email = 'refreshtokenduplicationbutusefultest1@example.com';
+
+    const oldDuplicationToken =
+      'OLDREFRESHMB5NpeA7Xi5AGphKPHwyKNYzSEwxjRNhMhKyps';
+
+    const oldUser = await prisma.user.create({
+      data: {
+        email: email,
+        hashedPassword: '',
+        username: '',
+        tokens: {
+          create: {
+            loginToken: '',
+            refreshToken: oldDuplicationToken,
+            createdAt: new Date(1980, 12, 31),
+          },
+        },
+      },
+    });
+
+    // リフレッシュトークンはログイントークンのあとに発行されるので、2回目に同じ文字列が出力されればいい
+    const randomBytesSpy = jest.spyOn(crypto, 'randomBytes');
+    randomBytesSpy.mockImplementationOnce(() => oldDuplicationToken);
+    randomBytesSpy.mockImplementationOnce(() => oldDuplicationToken);
+
+    const user = await User.createUserByEmailAndPassword(
+      'logintokenduplicationbutusefultest2@example.com',
+      'password',
+      ''
+    );
+
+    expect(user.validToken.refreshToken).toBe(oldDuplicationToken);
   });
 
   test('トークンから正しくユーザーデータを取得できるか', async () => {
