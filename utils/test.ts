@@ -46,11 +46,10 @@ describe('/model/user.ts', () => {
     const loginTokenDuplicationTestToken =
       'zTrGJKGJTSMB5NpeA7Xi5AGphKPHwyKNYzSEwxjRNhMhKyps';
 
-    // 次回作成時に設定したトークンを返す
-    const createLoginTokenSpy = jest.spyOn(User as any, 'createLoginToken');
-    createLoginTokenSpy.mockImplementationOnce(
-      async () => loginTokenDuplicationTestToken
-    );
+    // 次回と次々回に同じ文字列を出力する
+    const randomBytesSpy = jest.spyOn(crypto, 'randomBytes');
+    randomBytesSpy.mockImplementationOnce(() => loginTokenDuplicationTestToken);
+    randomBytesSpy.mockImplementationOnce(() => loginTokenDuplicationTestToken);
 
     const existUser = await User.createUserByEmailAndPassword(
       'logintokenduplicationtestexistuser@example.com',
@@ -78,10 +77,13 @@ describe('/model/user.ts', () => {
     const refreshTokenDuplicationTestToken =
       'zTrGJKGJTSMB5NpeA7Xi5AGphKPHwyKNYzSEwxjRNhMhKyps';
 
-    // 次回作成時に設定したトークンを返す
-    const createRefreshTokenSpy = jest.spyOn(User as any, 'createRefreshToken');
-    createRefreshTokenSpy.mockImplementationOnce(
-      async () => refreshTokenDuplicationTestToken
+    // 次回と次々回に同じ文字列を出力する
+    const randomBytesSpy = jest.spyOn(crypto, 'randomBytes');
+    randomBytesSpy.mockImplementationOnce(
+      () => refreshTokenDuplicationTestToken
+    );
+    randomBytesSpy.mockImplementationOnce(
+      () => refreshTokenDuplicationTestToken
     );
 
     const existUser = await User.createUserByEmailAndPassword(
