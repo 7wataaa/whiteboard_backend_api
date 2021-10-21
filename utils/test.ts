@@ -10,6 +10,7 @@ dotenv.config();
 
 const tokenRegExp = /^[\-\~\+\/\w]{48}$/;
 const iso8601RegExp = /Z|[+-](0\d|1[012])(:?[012345]\d)?/;
+const invitePasswordRegExp = /^[A-Za-z0-9_-]{32}$/;
 
 afterEach(async () => {
   jest.restoreAllMocks();
@@ -236,7 +237,25 @@ describe('/model/room.ts', () => {
       null
     );
   });
+
+  test('招待URLが生成できているかのテスト', async () => {
+    const roomName = 'inviteURLgenerateTestRoom';
+
+    const inviteURLgenerateTestEmail = 'inviteurlgeneratetest@example.com';
+    const inviteURLgenerateTestPass = 'password';
+
+    const user = await User.createUserByEmailAndPassword(
+      inviteURLgenerateTestEmail,
+      inviteURLgenerateTestPass,
+      ''
+    );
+
+    const room = await Room.create(roomName, user);
+
+    expect(room.invitePassword).toMatch(invitePasswordRegExp);
+  });
 });
+
 /* URL叩くテスト */
 
 describe('/', () => {

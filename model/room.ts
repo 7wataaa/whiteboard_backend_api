@@ -1,6 +1,7 @@
 import { Prisma as PrismaTypes } from '.prisma/client';
 import { prisma } from '../prismaClient';
 import { User } from './user';
+import crypto from 'crypto';
 
 export class Room {
   /**
@@ -10,9 +11,18 @@ export class Room {
    * @returns prismaの作成結果
    */
   static async create(roomName: string, author: User) {
+    const passChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_-';
+
+    const invitePassword = Array.from(
+      crypto.randomFillSync(new Uint32Array(32))
+    )
+      .map((n) => passChars[n % passChars.length])
+      .join('');
+
     const createResult = await prisma.room.create({
       data: {
         name: roomName,
+        invitePassword: invitePassword,
         joinedUsers: {
           connect: {
             email: author.email,
@@ -39,6 +49,62 @@ export class Room {
     return new Room({ ...createResult, joinedUsers: users });
   }
 
+  static async joinRoom(
+    userId: string,
+    roomId: string,
+    invitePassword: string
+  ): Promise<Room | null> {
+    const user = await User.findUserById(userId);
+
+    if (!user) {
+      return null;
+    }
+
+    const room = await prisma.room.findUnique({
+      where: {
+        id: roomId,
+      },
+    });
+
+    if (!room || room.invitePassword != invitePassword) {
+      return null;
+    }
+
+    const queryResult = await prisma.room.update({
+      where: {
+        id: room.id,
+      },
+      data: {
+        joinedUsers: {
+          connect: {
+            email: user.email,
+          },
+        },
+      },
+      include: {
+        joinedUsers: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    const users = await Promise.all(
+      queryResult.joinedUsers.map(async (e) => {
+        const user = await User.findUserById(e.id);
+
+        if (user == null) {
+          throw new Error('部屋作成時にユーザーが取得できない');
+        }
+
+        return user;
+      })
+    );
+
+    return new Room({ ...queryResult, joinedUsers: users });
+  }
+
   /** ルームID */
   id: string;
 
@@ -54,6 +120,9 @@ export class Room {
   /** このオブジェクト作成時点で参加しているユーザーのリスト */
   joinedUsers: User[];
 
+  /** 部屋招待時に必要になるパスワード */
+  invitePassword: string;
+
   constructor(
     roomArgs: PrismaTypes.RoomUncheckedCreateInput & {
       joinedUsers: User[];
@@ -63,7 +132,8 @@ export class Room {
       !roomArgs.createdAt ||
       !roomArgs.updateAt ||
       !roomArgs.id ||
-      !roomArgs.joinedUsers
+      !roomArgs.joinedUsers ||
+      !roomArgs.invitePassword
     ) {
       throw new Error('Roomのコンストラクタにundefinedが入っている');
     }
@@ -80,5 +150,7 @@ export class Room {
     this.updatedAt = dateNomalize(roomArgs.updateAt);
 
     this.joinedUsers = roomArgs.joinedUsers;
+
+    this.invitePassword = roomArgs.invitePassword;
   }
 }
