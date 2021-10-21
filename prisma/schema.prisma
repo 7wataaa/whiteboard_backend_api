@@ -50,7 +50,7 @@ model Room {
   createdAt      DateTime  @default(now()) @map("created_at")
   updateAt       DateTime  @default(now()) @map("update_at")
   deletedAt      DateTime? @map("deleted_at")
-  Post           Post[]
+  posts          Post[]
   invitePassword String
 
   @@map("room")
