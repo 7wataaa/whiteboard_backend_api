@@ -44,13 +44,14 @@ enum Role {
 }
 
 model Room {
-  id          String    @id @default(uuid()) @db.Uuid
-  joinedUsers User[]
-  name        String
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updateAt    DateTime  @default(now()) @map("update_at")
-  deletedAt   DateTime? @map("deleted_at")
-  Post        Post[]
+  id             String    @id @default(uuid()) @db.Uuid
+  joinedUsers    User[]
+  name           String
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updateAt       DateTime  @default(now()) @map("update_at")
+  deletedAt      DateTime? @map("deleted_at")
+  Post           Post[]
+  invitePassword String
 
   @@map("room")
 }
