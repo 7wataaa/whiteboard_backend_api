@@ -477,6 +477,66 @@ describe('/model/room.ts', () => {
       },
     ]);
   });
+
+  test('投稿の一覧が取得できるか', async () => {
+    const user1 = await User.createUserByEmailAndPassword(
+      'getallpoststest1@example.com',
+      'password',
+      ''
+    );
+    const user2 = await User.createUserByEmailAndPassword(
+      'getallpoststest2@example.com',
+      'password',
+      ''
+    );
+
+    const room = await Room.create('getallpoststestroom', user1);
+
+    await Room.joinRoom(user2.id, room.id, room.invitePassword);
+
+    const postId1 = await room.createNewPost(
+      new Post({
+        text: 'post1',
+        author: user1,
+      })
+    );
+
+    const postId2 = await room.createNewPost(
+      new Post({
+        text: 'post2',
+        author: user2,
+      })
+    );
+
+    const postId3 = await room.createNewPost(
+      new Post({
+        text: 'post3',
+        author: user2,
+      })
+    );
+
+    const allPosts = await room.fetchAllPosts();
+
+    expect(
+      allPosts.map((e) => ({ id: e.id, authorId: e.authorId, text: e.text }))
+    ).toStrictEqual([
+      {
+        id: postId1,
+        authorId: user1.id,
+        text: 'post1',
+      },
+      {
+        id: postId2,
+        authorId: user2.id,
+        text: 'post2',
+      },
+      {
+        id: postId3,
+        authorId: user2.id,
+        text: 'post3',
+      },
+    ]);
+  });
 });
 
 /* URL叩くテスト */
