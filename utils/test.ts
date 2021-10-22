@@ -16,10 +16,10 @@ afterEach(async () => {
   jest.restoreAllMocks();
   jest.useRealTimers();
 
+  await prisma.post.deleteMany();
   await prisma.room.deleteMany();
   await prisma.token.deleteMany();
   await prisma.user.deleteMany();
-  await prisma.token.deleteMany();
 });
 
 /* 処理等のテスト */
