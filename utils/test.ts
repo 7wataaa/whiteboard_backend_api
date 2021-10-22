@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import request from 'supertest';
 import { app } from '../app';
+import { Post } from '../model/post';
 import { Room } from '../model/room';
 import { User } from '../model/user';
 import { prisma } from '../prismaClient';
@@ -424,6 +425,47 @@ describe('/model/room.ts', () => {
         })
       ).rooms
     ).toStrictEqual([]);
+  });
+
+  test('新規投稿ができるか', async () => {
+    const user = await User.createUserByEmailAndPassword(
+      'posttest@example.com',
+      'password',
+      ''
+    );
+
+    const room = await Room.create('posttestroom', user);
+
+    const text = 'foobarbuzz';
+
+    const newPostId = await room.createNewPost(
+      new Post({ text: text, author: user })
+    );
+
+    expect(newPostId).not.toBe(null);
+
+    expect(
+      (
+        await prisma.room.findUnique({
+          where: {
+            id: room.id,
+          },
+          include: {
+            posts: {
+              select: {
+                id: true,
+                text: true,
+              },
+            },
+          },
+        })
+      ).posts
+    ).toStrictEqual([
+      {
+        id: newPostId,
+        text: text,
+      },
+    ]);
   });
 });
 
