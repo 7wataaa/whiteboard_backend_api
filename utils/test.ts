@@ -438,11 +438,17 @@ describe('/model/room.ts', () => {
 
     const text = 'foobarbuzz';
 
-    const newPostId = await room.createNewPost(
+    const newPostId1 = await room.createNewPost(
       new Post({ text: text, author: user })
     );
 
-    expect(newPostId).not.toBe(null);
+    const newPostId2 = await room.createNewPost(
+      new Post({ text: text + text, author: user })
+    );
+
+    expect(newPostId1).not.toBe(null);
+
+    expect(newPostId2).not.toBe(null);
 
     expect(
       (
@@ -462,8 +468,12 @@ describe('/model/room.ts', () => {
       ).posts
     ).toStrictEqual([
       {
-        id: newPostId,
+        id: newPostId1,
         text: text,
+      },
+      {
+        id: newPostId2,
+        text: text + text,
       },
     ]);
   });
