@@ -51,6 +51,14 @@ export class Room {
     return new Room({ ...createResult, joinedUsers: users });
   }
 
+  /**
+   * 部屋に入室して[Room]オブジェクトを返す
+   *
+   * @param userId 入室したいユーザーのID
+   * @param roomId ターゲットの部屋
+   * @param invitePassword ターゲットの部屋に設定されている招待パスワード
+   * @returns Roomオブジェクト
+   */
   static async joinRoom(
     userId: string,
     roomId: string,
@@ -179,6 +187,11 @@ export class Room {
     return createdPost.id;
   }
 
+  /**
+   * 現時点でのこの部屋のすべての投稿を返す
+   *
+   * @returns 現時点でのこの部屋のすべての投稿
+   */
   async fetchAllPosts() {
     const allPosts = await prisma.room.findUnique({
       where: {
