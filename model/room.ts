@@ -179,6 +179,23 @@ export class Room {
     return createdPost.id;
   }
 
+  async fetchAllPosts() {
+    const allPosts = await prisma.room.findUnique({
+      where: {
+        id: this.id,
+      },
+      include: {
+        posts: true,
+      },
+    });
+
+    if (!allPosts) {
+      throw new RoomNotFoundError();
+    }
+
+    return allPosts.posts;
+  }
+
   async exit(user: User) {
     const userDisconnectResult = await prisma.room.update({
       where: {
@@ -215,3 +232,5 @@ export class Room {
 }
 
 export class EmptyTextPostError extends ExtensibleCustomError {}
+
+export class RoomNotFoundError extends ExtensibleCustomError {}
