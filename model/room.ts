@@ -1,7 +1,9 @@
 import { Prisma as PrismaTypes } from '.prisma/client';
-import { prisma } from '../prismaClient';
-import { User } from './user';
 import crypto from 'crypto';
+import ExtensibleCustomError from 'extensible-custom-error';
+import { prisma } from '../prismaClient';
+import { Post } from './post';
+import { User } from './user';
 
 export class Room {
   /**
@@ -154,6 +156,29 @@ export class Room {
     this.invitePassword = roomArgs.invitePassword;
   }
 
+  /**
+   * 部屋のポストを作成するメソッド
+   * [post]が空だったらEmptyTextPostErrorを投げる
+   *
+   * @param post 作成したい内容Postオブジェクト
+   * @returns ポストID
+   */
+  async createNewPost(post: Post) {
+    if (post.isEmptyText) {
+      throw new EmptyTextPostError('空のテキストをポストすることはできない');
+    }
+
+    const createdPost = await prisma.post.create({
+      data: {
+        roomId: this.id,
+        authorId: post.author.id,
+        text: post.text,
+      },
+    });
+
+    return createdPost.id;
+  }
+
   async exit(user: User) {
     const userDisconnectResult = await prisma.room.update({
       where: {
@@ -188,3 +213,5 @@ export class Room {
     this.joinedUsers = newJoinedUsers;
   }
 }
+
+export class EmptyTextPostError extends ExtensibleCustomError {}

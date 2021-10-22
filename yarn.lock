@@ -2470,6 +2470,11 @@ express@~4.16.1:
     utils-merge "1.0.1"
     vary "~1.1.2"
 
+extensible-custom-error@^0.0.7:
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/extensible-custom-error/-/extensible-custom-error-0.0.7.tgz#4d6cc86c71d60a0e11fa8d24972104720cd30305"
+  integrity sha512-1tgubPkgC+Qi2nUpulI7hGddHh0fA8hXu3P0LBUq2pamZL52KSJZqMu8Q3CiA6kf7Irn/CU1fJe6y4igHCwu4Q==
+
 fast-json-stable-stringify@^2.0.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/fast-json-stable-stringify/-/fast-json-stable-stringify-2.1.0.tgz#874bf69c6f404c2b5d99c481341399fd55892633"
