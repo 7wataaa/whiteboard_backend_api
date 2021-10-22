@@ -64,6 +64,7 @@ model Post {
   createdAt DateTime  @default(now()) @map("created_at")
   updateAt  DateTime  @default(now()) @map("update_at")
   deletedAt DateTime? @map("deleted_at")
+  text      String
 
   @@map("post")
 }
