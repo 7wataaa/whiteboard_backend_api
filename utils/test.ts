@@ -12,6 +12,8 @@ dotenv.config();
 const tokenRegExp = /^[\-\~\+\/\w]{48}$/;
 const iso8601RegExp = /Z|[+-](0\d|1[012])(:?[012345]\d)?/;
 const invitePasswordRegExp = /^[A-Za-z0-9_-]{32}$/;
+const uuidRegExp =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 afterEach(async () => {
   jest.restoreAllMocks();
@@ -834,10 +836,100 @@ describe('/api/v0/rooms', () => {
     ]);
   });
 });
-/* describe('/api/v0/rooms/:id/posts', () => {
-  test('');
+
+describe('/api/v0/rooms/:id/posts', () => {
+  test('post: 新規投稿のテスト', async () => {
+    const postTestEmail = 'posttest@example.com';
+    const postTestPass = 'password';
+
+    const registerRes = await request(app)
+      .post('/api/v0/auth/register')
+      .send({ email: postTestEmail, password: postTestPass })
+      .expect(200);
+
+    const loginToken = registerRes.body['loginToken'] as string;
+
+    const roomCreateRes = await request(app)
+      .post('/api/v0/rooms/create')
+      .auth(loginToken, { type: 'bearer' })
+      .send({
+        name: 'posttestroom',
+      })
+      .expect(200);
+
+    const roomId = roomCreateRes.body['roomId'] as string;
+
+    const response = await request(app)
+      .post(`/api/v0/rooms/${roomId}/posts`)
+      .auth(loginToken, { type: 'bearer' })
+      .send({
+        text: '新規投稿のテスト',
+      })
+      .expect(200);
+
+    const postId = response.body['id'];
+
+    expect(postId).toMatch(uuidRegExp);
+
+    const testPost = await prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+      include: {
+        room: true,
+      },
+    });
+
+    expect(testPost.text).toBe('新規投稿のテスト');
+
+    expect(testPost.authorId).toBe(
+      (await User.findUserByLoginToken(loginToken)).id
+    );
+
+    const roomFromPost = await prisma.room.findUnique({
+      where: {
+        id: testPost.roomId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    expect(roomFromPost.id).toBe(roomId);
+  });
+
+  test('roomIdの長さが違ったときのテスト', async () => {
+    const roomIdlengthTestEmail = 'posttest@example.com';
+    const roomIdlengthTestPass = 'password';
+
+    const registerRes = await request(app)
+      .post('/api/v0/auth/register')
+      .send({ email: roomIdlengthTestEmail, password: roomIdlengthTestPass })
+      .expect(200);
+
+    const loginToken = registerRes.body['loginToken'] as string;
+
+    const roomCreateRes = await request(app)
+      .post('/api/v0/rooms/create')
+      .auth(loginToken, { type: 'bearer' })
+      .send({
+        name: 'posttestroom',
+      })
+      .expect(200);
+
+    const roomId = roomCreateRes.body['roomId'] as string;
+
+    const response = await request(app)
+      .post(`/api/v0/rooms/${roomId}0/posts`)
+      .auth(loginToken, { type: 'bearer' })
+      .send({
+        text: 'roomIdが違うときのテスト',
+      })
+      .expect(400);
+  });
 });
 
+/*
 describe('/api/v0/rooms/:id/posts/:id', () => {
   test('');
 });
