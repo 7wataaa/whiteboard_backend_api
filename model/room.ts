@@ -115,6 +115,37 @@ export class Room {
     return new Room({ ...queryResult, joinedUsers: users });
   }
 
+  static async findRoomById(roomId: string) {
+    const findResult = await prisma.room.findUnique({
+      where: {
+        id: roomId,
+      },
+      include: {
+        joinedUsers: {
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!findResult) {
+      throw new RoomNotFoundError();
+    }
+
+    const joinedUsers = await Promise.all(
+      findResult.joinedUsers.map(async (e) => {
+        const user = await User.findUserById(e.id);
+
+        if (user == null) {
+          throw new Error('部屋作成時にユーザーが取得できない');
+        }
+
+        return user;
+      })
+    );
+
+    return new Room({ ...findResult, joinedUsers });
+  }
+
   /** ルームID */
   id: string;
 

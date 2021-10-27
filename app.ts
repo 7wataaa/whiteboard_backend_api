@@ -11,6 +11,7 @@ import { User } from './model/user';
 import { router as refreshRouter } from './routes/v0/auth/refresh';
 import { router as registerRouter } from './routes/v0/auth/register';
 import { router as pingRouter } from './routes/v0/ping';
+import { router as roomIdPostRouter } from './routes/v0/rooms/:roomId/posts/posts';
 import { router as createRoomRouter } from './routes/v0/rooms/create';
 import { router as meRouter } from './routes/v0/users/me';
 
@@ -70,6 +71,7 @@ app.use('/api/v0/', registerRouter);
 app.use('/api/v0/', meRouter);
 app.use('/api/v0/', refreshRouter);
 app.use('/api/v0', createRoomRouter);
+app.use('/api/v0', roomIdPostRouter);
 
 // catch 404 and forward to error handler
 app.use((req: Request, res: Response, next: NextFunction) => {

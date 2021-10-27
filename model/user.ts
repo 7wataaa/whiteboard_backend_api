@@ -2,6 +2,7 @@ import * as PrismaTypes from '.prisma/client';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { prisma } from '../prismaClient';
+import { Room } from './room';
 
 class UserRepository {
   async findUniqueUserById(userId: string) {
@@ -109,62 +110,6 @@ interface UserInput {
 }
 
 export class User {
-  // ユーザーのID、形式はUUID。
-  id: Readonly<string>;
-
-  // ユニークなメールアドレス
-  email: Readonly<string>;
-
-  // ユーザーネーム、空文字列の可能性あり
-  username: Readonly<string>;
-
-  // セキュリティのためハッシュ化したパスワード
-  hashedPassword: Readonly<string>;
-
-  // 登録日時
-  createdAt: Readonly<Date>;
-
-  // 削除日時、これに値が入ってると論理削除判定
-  deletedAt: Readonly<Date | null>;
-
-  // 更新日時
-  updatedAt: Readonly<Date>;
-
-  // ユーザーの種類
-  role: Readonly<PrismaTypes.Role>;
-
-  // ユーザーが入室している部屋一覧
-  rooms: Readonly<PrismaTypes.Room[]>;
-
-  // ユーザーに紐付けられているトークンs、有効なトークンがない場合もある
-  tokens: Readonly<PrismaTypes.Token[]>;
-
-  // 現在有効なトークン、ない場合もある
-  validToken: Readonly<PrismaTypes.Token | null>;
-
-  private static repository: Readonly<UserRepository> = new UserRepository();
-
-  constructor(a: UserInput) {
-    this.id = a.id;
-    this.email = a.email;
-    this.username = a.username;
-    this.hashedPassword = a.hashedPassword;
-    this.createdAt = a.createdAt;
-    this.deletedAt = a.deletedAt;
-    this.updatedAt = a.updatedAt;
-    this.role = a.role;
-    this.rooms = a.rooms;
-    this.tokens = a.tokens;
-
-    const latestToken = a.tokens.reduce((a, b) =>
-      a.createdAt > b.createdAt ? a : b
-    );
-
-    this.validToken = User.isLoginTokenEnabled(latestToken.createdAt)
-      ? latestToken
-      : null;
-  }
-
   static async findUserById(userId: string) {
     const user = await User.repository.findUniqueUserById(userId);
 
@@ -326,5 +271,69 @@ export class User {
     const updatedUser = await User.findUserById(updatedToken.id);
 
     return updatedUser;
+  }
+
+  // ユーザーのID、形式はUUID。
+  id: Readonly<string>;
+
+  // ユニークなメールアドレス
+  email: Readonly<string>;
+
+  // ユーザーネーム、空文字列の可能性あり
+  username: Readonly<string>;
+
+  // セキュリティのためハッシュ化したパスワード
+  hashedPassword: Readonly<string>;
+
+  // 登録日時
+  createdAt: Readonly<Date>;
+
+  // 削除日時、これに値が入ってると論理削除判定
+  deletedAt: Readonly<Date | null>;
+
+  // 更新日時
+  updatedAt: Readonly<Date>;
+
+  // ユーザーの種類
+  role: Readonly<PrismaTypes.Role>;
+
+  // ユーザーが入室している部屋一覧
+  rooms: Readonly<PrismaTypes.Room[]>;
+
+  // ユーザーに紐付けられているトークンs、有効なトークンがない場合もある
+  tokens: Readonly<PrismaTypes.Token[]>;
+
+  // 現在有効なトークン、ない場合もある
+  validToken: Readonly<PrismaTypes.Token | null>;
+
+  private static repository: Readonly<UserRepository> = new UserRepository();
+
+  constructor(a: UserInput) {
+    this.id = a.id;
+    this.email = a.email;
+    this.username = a.username;
+    this.hashedPassword = a.hashedPassword;
+    this.createdAt = a.createdAt;
+    this.deletedAt = a.deletedAt;
+    this.updatedAt = a.updatedAt;
+    this.role = a.role;
+    this.rooms = a.rooms;
+    this.tokens = a.tokens;
+
+    const latestToken = a.tokens.reduce((a, b) =>
+      a.createdAt > b.createdAt ? a : b
+    );
+
+    this.validToken = User.isLoginTokenEnabled(latestToken.createdAt)
+      ? latestToken
+      : null;
+  }
+
+  /**
+   * @param room このユーザーが所属しているか確認したい部屋
+   * @returns [room]に所属しているかどうか
+   */
+  isInRoom(room: Room): boolean {
+    return this.rooms.find((r) => r.id == room.id) != undefined;
   }
 }
