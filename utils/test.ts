@@ -927,6 +927,76 @@ describe('/api/v0/rooms/:id/posts', () => {
       })
       .expect(400);
   });
+
+  test('get: 投稿一覧の取得ができるか', async () => {
+    const postGetTestEmail = 'posttest@example.com';
+    const postGetTestPass = 'password';
+
+    const registerRes = await request(app)
+      .post('/api/v0/auth/register')
+      .send({ email: postGetTestEmail, password: postGetTestPass })
+      .expect(200);
+
+    const loginToken = registerRes.body['loginToken'] as string;
+
+    const roomCreateRes = await request(app)
+      .post('/api/v0/rooms/create')
+      .auth(loginToken, { type: 'bearer' })
+      .send({
+        name: 'posttestroom',
+      })
+      .expect(200);
+
+    const roomId = roomCreateRes.body['roomId'] as string;
+
+    // 複数のポストがある状態を作る
+    const postRes1 = await request(app)
+      .post(`/api/v0/rooms/${roomId}/posts`)
+      .auth(loginToken, { type: 'bearer' })
+      .send({
+        text: 'テスト用ポスト1',
+      })
+      .expect(200);
+
+    const postRes2 = await request(app)
+      .post(`/api/v0/rooms/${roomId}/posts`)
+      .auth(loginToken, { type: 'bearer' })
+      .send({
+        text: 'テスト用ポスト2',
+      })
+      .expect(200);
+
+    const response = await request(app)
+      .get(`/api/v0/rooms/${roomId}/posts`)
+      .auth(loginToken, { type: 'bearer' });
+
+    expect(response.body['posts'].length).toBe(2);
+
+    expect(response.body['posts']).toStrictEqual([
+      {
+        authorId: (
+          await User.findUserByLoginToken(registerRes.body['loginToken'])
+        ).id,
+        createdAt: expect.stringMatching(iso8601RegExp),
+        updateAt: expect.stringMatching(iso8601RegExp),
+        deletedAt: null,
+        id: postRes1.body['id'],
+        roomId: roomId,
+        text: 'テスト用ポスト1',
+      },
+      {
+        authorId: (
+          await User.findUserByLoginToken(registerRes.body['loginToken'])
+        ).id,
+        createdAt: expect.stringMatching(iso8601RegExp),
+        updateAt: expect.stringMatching(iso8601RegExp),
+        deletedAt: null,
+        id: postRes2.body['id'],
+        roomId: roomId,
+        text: 'テスト用ポスト2',
+      },
+    ]);
+  });
 });
 
 /*
