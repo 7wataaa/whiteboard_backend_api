@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import request from 'supertest';
 import { app } from '../app';
 import { Post } from '../model/post';
-import { Room } from '../model/room';
+import { Room, RoomNotFoundError } from '../model/room';
 import { User } from '../model/user';
 import { prisma } from '../prismaClient';
 dotenv.config();
@@ -747,6 +747,23 @@ describe('/api/v0/users/me', () => {
   });
 });
 
+const registerRequest = async (email: string, password: string) => {
+  return await request(app)
+    .post('/api/v0/auth/register')
+    .send({ email: email, password: password })
+    .expect(200);
+};
+
+const createRoomRequest = async (roomName: string, loginToken: string) => {
+  return await request(app)
+    .post('/api/v0/rooms/create')
+    .auth(loginToken, { type: 'bearer' })
+    .send({
+      name: roomName,
+    })
+    .expect(200);
+};
+
 describe('/api/v0/rooms', () => {
   test('postしたときのテスト', async () => {
     const roomsPostTestEmail = 'roomsposttest@example.com';
@@ -996,6 +1013,35 @@ describe('/api/v0/rooms/:id/posts', () => {
         text: 'テスト用ポスト2',
       },
     ]);
+  });
+
+  test('不明な部屋を参照したときのエラー', async () => {
+    const undefindRoomErrorTestEmail = 'undefindroomerrortestemail';
+    const undefindRoomErrorTestPass = 'password';
+
+    const registerRes = await registerRequest(
+      undefindRoomErrorTestEmail,
+      undefindRoomErrorTestPass
+    );
+
+    const createRoomRes = await createRoomRequest(
+      'undefindRoomErrorTestRoom',
+      registerRes.body['loginToken']
+    );
+
+    const findRoomByIdSpy = jest.spyOn(Room, 'findRoomById');
+
+    findRoomByIdSpy.mockImplementationOnce(async (roomId: string) => {
+      throw new RoomNotFoundError();
+    });
+
+    const response = await request(app)
+      .post(`/api/v0/rooms/${createRoomRes.body['roomId']}/posts`)
+      .auth(registerRes.body['loginToken'], { type: 'bearer' })
+      .send({
+        text: 'テスト用ポスト1',
+      })
+      .expect(400);
   });
 });
 
