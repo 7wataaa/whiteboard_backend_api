@@ -855,96 +855,6 @@ describe('/api/v0/rooms', () => {
 });
 
 describe('/api/v0/rooms/:id/posts', () => {
-  test('post: 新規投稿のテスト', async () => {
-    const postTestEmail = 'posttest@example.com';
-    const postTestPass = 'password';
-
-    const registerRes = await request(app)
-      .post('/api/v0/auth/register')
-      .send({ email: postTestEmail, password: postTestPass })
-      .expect(200);
-
-    const loginToken = registerRes.body['loginToken'] as string;
-
-    const roomCreateRes = await request(app)
-      .post('/api/v0/rooms/create')
-      .auth(loginToken, { type: 'bearer' })
-      .send({
-        name: 'posttestroom',
-      })
-      .expect(200);
-
-    const roomId = roomCreateRes.body['roomId'] as string;
-
-    const response = await request(app)
-      .post(`/api/v0/rooms/${roomId}/posts`)
-      .auth(loginToken, { type: 'bearer' })
-      .send({
-        text: '新規投稿のテスト',
-      })
-      .expect(200);
-
-    const postId = response.body['id'];
-
-    expect(postId).toMatch(uuidRegExp);
-
-    const testPost = await prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
-      include: {
-        room: true,
-      },
-    });
-
-    expect(testPost.text).toBe('新規投稿のテスト');
-
-    expect(testPost.authorId).toBe(
-      (await User.findUserByLoginToken(loginToken)).id
-    );
-
-    const roomFromPost = await prisma.room.findUnique({
-      where: {
-        id: testPost.roomId,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    expect(roomFromPost.id).toBe(roomId);
-  });
-
-  test('roomIdの長さが違ったときのテスト', async () => {
-    const roomIdlengthTestEmail = 'posttest@example.com';
-    const roomIdlengthTestPass = 'password';
-
-    const registerRes = await request(app)
-      .post('/api/v0/auth/register')
-      .send({ email: roomIdlengthTestEmail, password: roomIdlengthTestPass })
-      .expect(200);
-
-    const loginToken = registerRes.body['loginToken'] as string;
-
-    const roomCreateRes = await request(app)
-      .post('/api/v0/rooms/create')
-      .auth(loginToken, { type: 'bearer' })
-      .send({
-        name: 'posttestroom',
-      })
-      .expect(200);
-
-    const roomId = roomCreateRes.body['roomId'] as string;
-
-    const response = await request(app)
-      .post(`/api/v0/rooms/${roomId}0/posts`)
-      .auth(loginToken, { type: 'bearer' })
-      .send({
-        text: 'roomIdが違うときのテスト',
-      })
-      .expect(400);
-  });
-
   test('get: 投稿一覧の取得ができるか', async () => {
     const postGetTestEmail = 'posttest@example.com';
     const postGetTestPass = 'password';
@@ -1015,7 +925,97 @@ describe('/api/v0/rooms/:id/posts', () => {
     ]);
   });
 
-  test('不明な部屋を参照したときのエラー', async () => {
+  test('post: 新規投稿のテスト', async () => {
+    const postTestEmail = 'posttest@example.com';
+    const postTestPass = 'password';
+
+    const registerRes = await request(app)
+      .post('/api/v0/auth/register')
+      .send({ email: postTestEmail, password: postTestPass })
+      .expect(200);
+
+    const loginToken = registerRes.body['loginToken'] as string;
+
+    const roomCreateRes = await request(app)
+      .post('/api/v0/rooms/create')
+      .auth(loginToken, { type: 'bearer' })
+      .send({
+        name: 'posttestroom',
+      })
+      .expect(200);
+
+    const roomId = roomCreateRes.body['roomId'] as string;
+
+    const response = await request(app)
+      .post(`/api/v0/rooms/${roomId}/posts`)
+      .auth(loginToken, { type: 'bearer' })
+      .send({
+        text: '新規投稿のテスト',
+      })
+      .expect(200);
+
+    const postId = response.body['id'];
+
+    expect(postId).toMatch(uuidRegExp);
+
+    const testPost = await prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+      include: {
+        room: true,
+      },
+    });
+
+    expect(testPost.text).toBe('新規投稿のテスト');
+
+    expect(testPost.authorId).toBe(
+      (await User.findUserByLoginToken(loginToken)).id
+    );
+
+    const roomFromPost = await prisma.room.findUnique({
+      where: {
+        id: testPost.roomId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    expect(roomFromPost.id).toBe(roomId);
+  });
+
+  test('post: roomIdの長さが違ったときのテスト', async () => {
+    const roomIdlengthTestEmail = 'posttest@example.com';
+    const roomIdlengthTestPass = 'password';
+
+    const registerRes = await request(app)
+      .post('/api/v0/auth/register')
+      .send({ email: roomIdlengthTestEmail, password: roomIdlengthTestPass })
+      .expect(200);
+
+    const loginToken = registerRes.body['loginToken'] as string;
+
+    const roomCreateRes = await request(app)
+      .post('/api/v0/rooms/create')
+      .auth(loginToken, { type: 'bearer' })
+      .send({
+        name: 'posttestroom',
+      })
+      .expect(200);
+
+    const roomId = roomCreateRes.body['roomId'] as string;
+
+    const response = await request(app)
+      .post(`/api/v0/rooms/${roomId}0/posts`)
+      .auth(loginToken, { type: 'bearer' })
+      .send({
+        text: 'roomIdが違うときのテスト',
+      })
+      .expect(400);
+  });
+
+  test('post: 不明な部屋を参照したときのエラー', async () => {
     const undefindRoomErrorTestEmail = 'undefindroomerrortestemail';
     const undefindRoomErrorTestPass = 'password';
 
@@ -1044,7 +1044,7 @@ describe('/api/v0/rooms/:id/posts', () => {
       .expect(400);
   });
 
-  test('存在しない部屋に投稿しようとしたときのテスト', async () => {
+  test('post: 存在しない部屋に投稿しようとしたときのテスト', async () => {
     const registerRes = await registerRequest(
       'differentroomtest@example.com',
       'pass'
@@ -1074,7 +1074,7 @@ describe('/api/v0/rooms/:id/posts', () => {
       .expect(400);
   });
 
-  test('所属していない部屋に投稿しようとしたときのテスト', async () => {
+  test('post: 所属していない部屋に投稿しようとしたときのテスト', async () => {
     const registerRes1 = await registerRequest(
       'posttonotentered1@example.com',
       'password'
@@ -1101,7 +1101,7 @@ describe('/api/v0/rooms/:id/posts', () => {
       .expect(400);
   });
 
-  test('投稿するテキストが空だったときのテスト', async () => {
+  test('post: 投稿するテキストが空だったときのテスト', async () => {
     const registerRes = await registerRequest(
       'differentroomtest@example.com',
       'pass'
