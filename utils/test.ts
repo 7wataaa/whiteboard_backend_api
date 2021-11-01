@@ -989,6 +989,32 @@ describe('/api/v0/rooms/:id/posts', () => {
       .expect(400);
   });
 
+  test('get: 部屋が見つからなかったときのテスト', async () => {
+    const undefindRoomErrorTestEmail = 'undefindroomerrortestemail';
+    const undefindRoomErrorTestPass = 'password';
+
+    const registerRes = await registerRequest(
+      undefindRoomErrorTestEmail,
+      undefindRoomErrorTestPass
+    );
+
+    const createRoomRes = await createRoomRequest(
+      'undefindRoomErrorTestRoom',
+      registerRes.body['loginToken']
+    );
+
+    const findRoomByIdSpy = jest.spyOn(Room, 'findRoomById');
+
+    findRoomByIdSpy.mockImplementationOnce(async (roomId: string) => {
+      throw new RoomNotFoundError();
+    });
+
+    const response = await request(app)
+      .get(`/api/v0/rooms/${createRoomRes.body['roomId']}/posts`)
+      .auth(registerRes.body['loginToken'], { type: 'bearer' })
+      .expect(400);
+  });
+
   test('post: 新規投稿のテスト', async () => {
     const postTestEmail = 'posttest@example.com';
     const postTestPass = 'password';
