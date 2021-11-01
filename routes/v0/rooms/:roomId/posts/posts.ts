@@ -1,3 +1,4 @@
+import { PrismaClientUnknownRequestError } from '@prisma/client/runtime';
 import { Request, Response, Router } from 'express';
 import passport from 'passport';
 import { Post } from '../../../../../model/post';
@@ -9,6 +10,9 @@ import {
 import { User } from '../../../../../model/user';
 
 export const router = Router();
+
+const roomIdRegExp =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const isUser = (user: any): user is User =>
   user.id != null && user.createdAt != null;
@@ -28,13 +32,19 @@ router
 
       const roomId = req.params['roomId'];
 
-      if (!roomId || ![32, 36].includes(roomId.length)) {
+      if (
+        !roomId ||
+        ![32, 36].includes(roomId.length) ||
+        !roomIdRegExp.test(roomId)
+      ) {
         res.sendStatus(400);
         return;
       }
 
       const room = await Room.findRoomById(roomId).catch((e) => {
         if (e instanceof RoomNotFoundError) {
+          return null;
+        } else if (e instanceof PrismaClientUnknownRequestError) {
           return null;
         } else {
           throw e;
@@ -87,13 +97,19 @@ router
 
       const roomId = req.params['roomId'];
 
-      if (!roomId || ![32, 36].includes(roomId.length)) {
+      if (
+        !roomId ||
+        ![32, 36].includes(roomId.length) ||
+        !roomIdRegExp.test(roomId)
+      ) {
         res.sendStatus(400);
         return;
       }
 
       const room = await Room.findRoomById(roomId).catch((e) => {
         if (e instanceof RoomNotFoundError) {
+          return null;
+        } else if (e instanceof PrismaClientUnknownRequestError) {
           return null;
         } else {
           throw e;
