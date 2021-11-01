@@ -950,6 +950,18 @@ describe('/api/v0/rooms/:id/posts', () => {
       .expect(400);
   });
 
+  test('get: 0123456789abcdefABCDEF-以外の文字をパスに入れられたときのテスト', async () => {
+    const registerRes = await registerRequest(
+      'getroomidlengthincorrecttest@example.com',
+      'password'
+    );
+
+    const response = await request(app)
+      .get(`/api/v0/rooms/GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG/posts`)
+      .auth(registerRes.body['loginToken'], { type: 'bearer' })
+      .expect(400);
+  });
+
   test('post: 新規投稿のテスト', async () => {
     const postTestEmail = 'posttest@example.com';
     const postTestPass = 'password';
