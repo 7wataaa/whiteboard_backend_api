@@ -925,6 +925,31 @@ describe('/api/v0/rooms/:id/posts', () => {
     ]);
   });
 
+  test('get: roomIdの長さが違ったときのテスト', async () => {
+    const registerRes = await registerRequest(
+      'getroomidlengthincorrecttest@example.com',
+      'password'
+    );
+
+    const createRoomRes = await createRoomRequest(
+      'room',
+      registerRes.body['loginToken']
+    );
+
+    const incorrectRoomId = (createRoomRes.body['roomId'] as string).slice(
+      0,
+      35
+    );
+
+    console.log(createRoomRes.body['roomId'] as string);
+    console.log(incorrectRoomId);
+
+    const response = await request(app)
+      .get(`/api/v0/rooms/${incorrectRoomId}/posts`)
+      .auth(registerRes.body['loginToken'], { type: 'bearer' })
+      .expect(400);
+  });
+
   test('post: 新規投稿のテスト', async () => {
     const postTestEmail = 'posttest@example.com';
     const postTestPass = 'password';
