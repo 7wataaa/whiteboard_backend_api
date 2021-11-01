@@ -1043,6 +1043,38 @@ describe('/api/v0/rooms/:id/posts', () => {
       })
       .expect(400);
   });
+
+  test('存在しない部屋に投稿しようとしたときのテスト', async () => {
+    const registerRes = await registerRequest(
+      'differentroomtest@example.com',
+      'pass'
+    );
+
+    const createRoomRes = await createRoomRequest(
+      'room',
+      registerRes.body['loginToken']
+    );
+
+    const roomId = createRoomRes.body['roomId'] as string;
+
+    const nthReplace = (str: string, n: number, after: string) => {
+      return str.substr(0, n - 1) + after + str.substr(n);
+    };
+
+    const differentRoomId = roomId.startsWith('a')
+      ? nthReplace(roomId, 0, 'b')
+      : nthReplace(roomId, 0, 'a');
+
+    console.log(differentRoomId);
+
+    const response = await request(app)
+      .post(`/api/v0/rooms/${differentRoomId}/posts`)
+      .auth(registerRes.body['loginToken'], { type: 'bearer' })
+      .send({
+        text: 'テスト用ポスト1',
+      })
+      .expect(400);
+  });
 });
 
 /*
