@@ -6,6 +6,9 @@
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/dist/"
+    ],
+    "setupFilesAfterEnv": [
+      "./utils/jest-setup.ts"
     ]
   },
   "version": "0.1.0",
