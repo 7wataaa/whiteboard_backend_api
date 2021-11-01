@@ -1015,6 +1015,30 @@ describe('/api/v0/rooms/:id/posts', () => {
       .expect(400);
   });
 
+  test('get: 所属していない部屋の投稿を取得しようとしたときのテスト', async () => {
+    const registerRes1 = await registerRequest(
+      'posttonotentered1@example.com',
+      'password'
+    );
+
+    const registerRes2 = await registerRequest(
+      'posttonotentered2@example.com',
+      'password'
+    );
+
+    const createRoomRes1 = await createRoomRequest(
+      'room1',
+      registerRes1.body['loginToken']
+    );
+
+    // ユーザー1だけ所属している部屋にユーザー2が投稿しようとすると400が返されるか
+
+    const response = await request(app)
+      .get(`/api/v0/rooms/${createRoomRes1.body['roomId']}/posts`)
+      .auth(registerRes2.body['loginToken'], { type: 'bearer' })
+      .expect(400);
+  });
+
   test('post: 新規投稿のテスト', async () => {
     const postTestEmail = 'posttest@example.com';
     const postTestPass = 'password';
