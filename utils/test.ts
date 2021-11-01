@@ -1100,6 +1100,26 @@ describe('/api/v0/rooms/:id/posts', () => {
       })
       .expect(400);
   });
+
+  test('投稿するテキストが空だったときのテスト', async () => {
+    const registerRes = await registerRequest(
+      'differentroomtest@example.com',
+      'pass'
+    );
+
+    const createRoomRes = await createRoomRequest(
+      'room',
+      registerRes.body['loginToken']
+    );
+
+    const response = await request(app)
+      .post(`/api/v0/rooms/${createRoomRes.body['roomId']}/posts`)
+      .auth(registerRes.body['loginToken'], { type: 'bearer' })
+      .send({
+        text: '',
+      })
+      .expect(400);
+  });
 });
 
 /*
