@@ -1065,11 +1065,36 @@ describe('/api/v0/rooms/:id/posts', () => {
       ? nthReplace(roomId, 0, 'b')
       : nthReplace(roomId, 0, 'a');
 
-    console.log(differentRoomId);
-
     const response = await request(app)
       .post(`/api/v0/rooms/${differentRoomId}/posts`)
       .auth(registerRes.body['loginToken'], { type: 'bearer' })
+      .send({
+        text: 'テスト用ポスト1',
+      })
+      .expect(400);
+  });
+
+  test('所属していない部屋に投稿しようとしたときのテスト', async () => {
+    const registerRes1 = await registerRequest(
+      'posttonotentered1@example.com',
+      'password'
+    );
+
+    const registerRes2 = await registerRequest(
+      'posttonotentered2@example.com',
+      'password'
+    );
+
+    const createRoomRes1 = await createRoomRequest(
+      'room1',
+      registerRes1.body['loginToken']
+    );
+
+    // ユーザー1だけ所属している部屋にユーザー2が投稿しようとすると400が返されるか
+
+    const response = await request(app)
+      .post(`/api/v0/rooms/${createRoomRes1.body['roomId']}/posts`)
+      .auth(registerRes2.body['loginToken'], { type: 'bearer' })
       .send({
         text: 'テスト用ポスト1',
       })
