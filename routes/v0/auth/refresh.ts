@@ -81,9 +81,7 @@ router.post(
       return;
     }
 
-    const newUser = await User.regenerateUsersToken(
-      user.validToken.refreshToken
-    );
+    const newUser = await User.regenerateUsersToken(user);
 
     if (!newUser) {
       res.sendStatus(500);

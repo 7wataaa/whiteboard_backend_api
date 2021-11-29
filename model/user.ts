@@ -249,15 +249,7 @@ export class User {
     return refreshToken;
   }
 
-  static async regenerateUsersToken(
-    refreshToken: string
-  ): Promise<User | null> {
-    const user = await User.findUserByRefreshToken(refreshToken);
-
-    if (!user) {
-      return null;
-    }
-
+  static async regenerateUsersToken(user: User): Promise<User | null> {
     let newLoginToken = await User.createLoginToken();
 
     let newRefreshToken = await User.createRefreshToken();
