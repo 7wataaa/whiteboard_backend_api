@@ -55,7 +55,7 @@ router.post('/auth/register', async (req: Request, res: Response) => {
     return;
   }
 
-  const aleadyExistsUser = await User.findFirstUserByEmail(email);
+  const aleadyExistsUser = await User.findUserByEmail(email);
 
   if (aleadyExistsUser) {
     res.status(409);
@@ -69,6 +69,9 @@ router.post('/auth/register', async (req: Request, res: Response) => {
   const newUser = await User.createUserByEmailAndPassword(email, password, '');
 
   if (newUser) {
+    // 本人確認メールの送信
+    await newUser.sendConfirmationEmail();
+
     res.status(200);
     // TODO トークンを返却するときの方法を決める(例: どこかしらのヘッダーに入れるなど)
     res.json({

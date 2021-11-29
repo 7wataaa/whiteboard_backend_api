@@ -15,10 +15,10 @@ describe('/api/v0/rooms/:id/posts', () => {
     const postGetTestEmail = 'posttest@example.com';
     const postGetTestPass = 'password';
 
-    const registerRes = await request(app)
-      .post('/api/v0/auth/register')
-      .send({ email: postGetTestEmail, password: postGetTestPass })
-      .expect(200);
+    const registerRes = await registerRequest(
+      postGetTestEmail,
+      postGetTestPass
+    );
 
     const loginToken = registerRes.body['loginToken'] as string;
 
@@ -146,7 +146,7 @@ describe('/api/v0/rooms/:id/posts', () => {
   });
 
   test('get: 部屋が見つからなかったときのテスト', async () => {
-    const undefindRoomErrorTestEmail = 'undefindroomerrortestemail';
+    const undefindRoomErrorTestEmail = 'undefindroomerrortestemail@example.com';
     const undefindRoomErrorTestPass = 'password';
 
     const registerRes = await registerRequest(
@@ -199,10 +199,7 @@ describe('/api/v0/rooms/:id/posts', () => {
     const postTestEmail = 'posttest@example.com';
     const postTestPass = 'password';
 
-    const registerRes = await request(app)
-      .post('/api/v0/auth/register')
-      .send({ email: postTestEmail, password: postTestPass })
-      .expect(200);
+    const registerRes = await registerRequest(postTestEmail, postTestPass);
 
     const loginToken = registerRes.body['loginToken'] as string;
 
@@ -259,10 +256,10 @@ describe('/api/v0/rooms/:id/posts', () => {
     const roomIdlengthTestEmail = 'posttest@example.com';
     const roomIdlengthTestPass = 'password';
 
-    const registerRes = await request(app)
-      .post('/api/v0/auth/register')
-      .send({ email: roomIdlengthTestEmail, password: roomIdlengthTestPass })
-      .expect(200);
+    const registerRes = await registerRequest(
+      roomIdlengthTestEmail,
+      roomIdlengthTestPass
+    );
 
     const loginToken = registerRes.body['loginToken'] as string;
 
@@ -286,7 +283,7 @@ describe('/api/v0/rooms/:id/posts', () => {
   });
 
   test('post: 不明な部屋を参照したときのエラー', async () => {
-    const undefindRoomErrorTestEmail = 'undefindroomerrortestemail';
+    const undefindRoomErrorTestEmail = 'undefindroomerrortest@example.com';
     const undefindRoomErrorTestPass = 'password';
 
     const registerRes = await registerRequest(

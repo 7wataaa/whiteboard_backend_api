@@ -2,21 +2,18 @@ import request from 'supertest';
 import { app } from '../../app';
 import { User } from '../../model/user';
 import { prisma } from '../../prismaClient';
+import { registerRequest } from '../jest-setup';
 
 describe('/api/v0/rooms', () => {
   test('postしたときのテスト', async () => {
     const roomsPostTestEmail = 'roomsposttest@example.com';
     const roomsPostTestPass = 'password';
 
-    const user = await User.createUserByEmailAndPassword(
-      roomsPostTestEmail,
-      roomsPostTestPass,
-      ''
-    );
+    const user = await registerRequest(roomsPostTestEmail, roomsPostTestPass);
 
     const response = await request(app)
       .post('/api/v0/rooms/create')
-      .auth(user.validToken.loginToken, { type: 'bearer' })
+      .auth(user.body['loginToken'], { type: 'bearer' })
       .send({
         name: 'test-room',
       })
@@ -43,15 +40,14 @@ describe('/api/v0/rooms', () => {
     const roomsPostValidationTestEmail = 'roomspostvalidationtest@example.com';
     const roomsPostValidationTestPass = 'password';
 
-    const user = await User.createUserByEmailAndPassword(
+    const user = await registerRequest(
       roomsPostValidationTestEmail,
-      roomsPostValidationTestPass,
-      ''
+      roomsPostValidationTestPass
     );
 
     const response = await request(app)
       .post('/api/v0/rooms/create')
-      .auth(user.validToken.loginToken, { type: 'bearer' })
+      .auth(user.body['loginToken'], { type: 'bearer' })
       .send({
         name: '',
       })
@@ -62,15 +58,14 @@ describe('/api/v0/rooms', () => {
     const roomPostUserJoinedTestEmail = 'roompostuserjoinedtest@example.com';
     const roomPostUserJoinedTestPass = 'password';
 
-    const user = await User.createUserByEmailAndPassword(
+    const user = await registerRequest(
       roomPostUserJoinedTestEmail,
-      roomPostUserJoinedTestPass,
-      ''
+      roomPostUserJoinedTestPass
     );
 
     const response = await request(app)
       .post('/api/v0/rooms/create')
-      .auth(user.validToken.loginToken, { type: 'bearer' })
+      .auth(user.body['loginToken'], { type: 'bearer' })
       .send({ name: 'roomuserjoinedtestroom' })
       .expect(200);
 

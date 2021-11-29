@@ -19,6 +19,8 @@
     "test": "DATABASE_URL=\"postgresql://postgres:postgres@db:5432/test\" npx prisma migrate reset --force --skip-seed && env DATABASE_URL=\"postgresql://postgres:postgres@db:5432/test\" jest --coverage --forceExit --detectOpenHandles"
   },
   "dependencies": {
+    "@sendgrid/mail": "^7.6.0",
+    "base64url": "^3.0.1",
     "bcrypt": "^5.0.1",
     "cookie-parser": "~1.4.4",
     "crypto-js": "^4.1.1",

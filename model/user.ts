@@ -1,7 +1,10 @@
 import * as PrismaTypes from '.prisma/client';
+import base64url from 'base64url';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import ExtensibleCustomError from 'extensible-custom-error';
 import { prisma } from '../prismaClient';
+import { sendgrid } from '../sgMailClient';
 import { Room } from './room';
 
 class UserRepository {
@@ -13,14 +16,20 @@ class UserRepository {
       include: {
         rooms: true,
         tokens: true,
+        confirmationToken: true,
       },
     });
   }
 
-  async findFirstUserByEmail(email: string) {
+  async findUserByEmail(email: string) {
     return await prisma.user.findFirst({
       where: {
         email: email,
+      },
+      include: {
+        rooms: true,
+        tokens: true,
+        confirmationToken: true,
       },
     });
   }
@@ -31,6 +40,7 @@ class UserRepository {
       include: {
         rooms: true,
         tokens: true,
+        confirmationToken: true,
       },
     });
   }
@@ -48,6 +58,7 @@ class UserRepository {
           include: {
             rooms: true,
             tokens: true,
+            confirmationToken: true,
           },
         },
       },
@@ -67,6 +78,7 @@ class UserRepository {
           include: {
             rooms: true,
             tokens: true,
+            confirmationToken: true,
           },
         },
       },
@@ -94,6 +106,40 @@ class UserRepository {
       },
     });
   }
+
+  /**
+   * ユーザーの本人確認トークンを検索する
+   * @param usersEmail 本人確認したいユーザーのメールアドレス
+   * @returns {Promise<PrismaTypes.ConfirmationToken>}
+   */
+  async findConfirmationTokenByEmail(
+    usersEmail: string
+  ): Promise<PrismaTypes.ConfirmationToken | null> {
+    return await prisma.confirmationToken.findFirst({
+      where: {
+        userEmail: usersEmail,
+      },
+    });
+  }
+
+  /**
+   * ユーザーの本人確認トークンを削除し、ユーザーを本人確認済みにする
+   * @param usersEmail 本人確認したユーザーのメールアドレス
+   * @returns {Promise<void>}
+   */
+  async changeToConfirmationCompleted(usersEmail: string): Promise<void> {
+    const result = await prisma.user.update({
+      where: {
+        email: usersEmail,
+      },
+      data: {
+        isConfirmed: true,
+        confirmationToken: {
+          delete: true,
+        },
+      },
+    });
+  }
 }
 
 interface UserInput {
@@ -107,6 +153,8 @@ interface UserInput {
   role: PrismaTypes.Role;
   rooms: PrismaTypes.Room[];
   tokens: PrismaTypes.Token[];
+  confirmationToken: PrismaTypes.ConfirmationToken | null;
+  isConfirmed: boolean;
 }
 
 export class User {
@@ -133,13 +181,24 @@ export class User {
       hashedPassword: bcrypt.hashSync(password, 10),
       username: username,
       tokens: { create: { loginToken, refreshToken } },
+      confirmationToken: {
+        create: {
+          confirmationToken: await User.createConfirmationToken(),
+        },
+      },
     });
 
     return new User({ ...createdUser });
   }
 
-  static findFirstUserByEmail(email: string) {
-    return User.repository.findFirstUserByEmail(email);
+  static async findUserByEmail(email: string) {
+    const user = await User.repository.findUserByEmail(email);
+
+    if (!user) {
+      return null;
+    }
+
+    return new User({ ...user });
   }
 
   private static isLoginTokenEnabled(createdDate: Date): boolean {
@@ -249,15 +308,17 @@ export class User {
     return refreshToken;
   }
 
-  static async regenerateUsersToken(
-    refreshToken: string
-  ): Promise<User | null> {
-    const user = await User.findUserByRefreshToken(refreshToken);
+  /**
+   * 本人確認トークンを生成する
+   * @return {string} 生成したトークン
+   */
+  private static async createConfirmationToken(): Promise<string> {
+    const token = base64url(crypto.randomBytes(48));
 
-    if (!user) {
-      return null;
-    }
+    return token;
+  }
 
+  static async regenerateUsersToken(user: User): Promise<User | null> {
     let newLoginToken = await User.createLoginToken();
 
     let newRefreshToken = await User.createRefreshToken();
@@ -271,6 +332,44 @@ export class User {
     const updatedUser = await User.findUserById(updatedToken.id);
 
     return updatedUser;
+  }
+
+  /**
+   * ユーザーの本人確認処理を行う。
+   * @param {string} email
+   * @param {string} token
+   * @return {User | null} 本人確認後のユーザー、失敗したらnull
+   */
+  static async confirmationEmail(
+    email: string,
+    token: string
+  ): Promise<User | null> {
+    const userConfirmationToken =
+      await User.repository.findConfirmationTokenByEmail(email);
+
+    if (!userConfirmationToken) {
+      return null;
+    }
+
+    // このメールアドレスとともに保存されているトークンと受け取ったトークンを比較する
+    if (token != userConfirmationToken.confirmationToken) {
+      return null;
+    }
+
+    const after1DayFromTokenCreation = userConfirmationToken.createdAt.setDate(
+      userConfirmationToken.createdAt.getDate() + 1
+    );
+
+    const isTokenExpired = !(+new Date() <= after1DayFromTokenCreation);
+
+    if (isTokenExpired) {
+      return null;
+    }
+
+    // ユーザーを確認済みに変更する
+    await User.repository.changeToConfirmationCompleted(email);
+
+    return await User.findUserByEmail(email);
   }
 
   // ユーザーのID、形式はUUID。
@@ -306,21 +405,29 @@ export class User {
   // 現在有効なトークン、ない場合もある
   validToken: Readonly<PrismaTypes.Token | null>;
 
+  // 本人確認に使用するトークン
+  confirmationToken: PrismaTypes.ConfirmationToken | null;
+
+  // 本人確認済みかどうか
+  isConfirmed: Readonly<boolean>;
+
   private static repository: Readonly<UserRepository> = new UserRepository();
 
-  constructor(a: UserInput) {
-    this.id = a.id;
-    this.email = a.email;
-    this.username = a.username;
-    this.hashedPassword = a.hashedPassword;
-    this.createdAt = a.createdAt;
-    this.deletedAt = a.deletedAt;
-    this.updatedAt = a.updatedAt;
-    this.role = a.role;
-    this.rooms = a.rooms;
-    this.tokens = a.tokens;
+  constructor(userData: UserInput) {
+    this.id = userData.id;
+    this.email = userData.email;
+    this.username = userData.username;
+    this.hashedPassword = userData.hashedPassword;
+    this.createdAt = userData.createdAt;
+    this.deletedAt = userData.deletedAt;
+    this.updatedAt = userData.updatedAt;
+    this.role = userData.role;
+    this.rooms = userData.rooms;
+    this.tokens = userData.tokens;
+    this.confirmationToken = userData.confirmationToken;
+    this.isConfirmed = userData.isConfirmed;
 
-    const latestToken = a.tokens.reduce((a, b) =>
+    const latestToken = userData.tokens.reduce((a, b) =>
       a.createdAt > b.createdAt ? a : b
     );
 
@@ -336,4 +443,55 @@ export class User {
   isInRoom(room: Room): boolean {
     return this.rooms.find((r) => r.id == room.id) != undefined;
   }
+
+  /**
+   * 本人確認に使用するURLを生成する
+   * @returns {string} GETしたら本人確認処理が走るURL
+   */
+  private generateConfirmationUrl(): string {
+    if (!this.confirmationToken) {
+      throw new ConfirmationTokenNotFoundError();
+    }
+
+    const baseURL = 'http://localhost:3000/api/v0';
+
+    const redirectUrl = new URL(`${baseURL}`);
+
+    redirectUrl.pathname = '/api/v0/auth/email-confirmation';
+    redirectUrl.searchParams.set('email', encodeURIComponent(this.email));
+    redirectUrl.searchParams.set(
+      'token',
+      this.confirmationToken.confirmationToken
+    );
+
+    return redirectUrl.toString();
+  }
+
+  /**
+   * ユーザーに本人確認メールを送信する
+   * @return {void}
+   */
+  async sendConfirmationEmail(): Promise<void> {
+    const confirmationUrl = this.generateConfirmationUrl();
+
+    await sendgrid.send({
+      to: this.email,
+      from: 'dev.whiteboardapp@gmail.com',
+      subject: 'WhiteBoard 本人確認メール',
+      html: `<!DOCTYPE html>
+      <html lang="ja">
+        <head>
+          <meta charset="iso-2022-jp" />
+          <title>WhiteBoard本人確認メール</title>
+        </head>
+        <body>
+          <p>下記のボタンをクリックして本人確認をお願いいたします！</p>
+          <a href="${confirmationUrl}">確認</a>
+        </body>
+      </html>
+      `,
+    });
+  }
 }
+
+export class ConfirmationTokenNotFoundError extends ExtensibleCustomError {}

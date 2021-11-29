@@ -210,7 +210,7 @@ describe('/model/user.ts', () => {
     });
 
     const regeneratedUser = await User.regenerateUsersToken(
-      user.tokens[0].refreshToken
+      await User.findUserById(user.id)
     );
 
     expect(regeneratedUser.id).toEqual(user.id);
@@ -257,7 +257,7 @@ describe('/model/user.ts', () => {
     randomBytesSpy.mockImplementationOnce(() => existRefreshToken);
 
     const newUser = await User.regenerateUsersToken(
-      user.tokens[0].refreshToken
+      await User.findUserById(user.id)
     );
 
     expect(newUser.validToken.loginToken).toMatch(tokenRegExp);
