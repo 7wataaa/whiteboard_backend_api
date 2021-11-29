@@ -81,6 +81,10 @@ router.post(
       return;
     }
 
+    if (!user.isConfirmed) {
+      res.sendStatus(401);
+      return;
+    }
     const newUser = await User.regenerateUsersToken(user);
 
     if (!newUser) {
