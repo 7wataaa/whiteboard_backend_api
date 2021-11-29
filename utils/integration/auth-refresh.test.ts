@@ -1,36 +1,35 @@
-import { prisma } from '../../prismaClient';
 import request from 'supertest';
 import { app } from '../../app';
 import { User } from '../../model/user';
-import { iso8601RegExp } from '../jest-setup';
+import { prisma } from '../../prismaClient';
+import { iso8601RegExp, registerRequest } from '../jest-setup';
 
 describe('/api/v0/auth/refresh', () => {
   test('正しく新規アクセストークンを返すか', async () => {
     const apiRefreshTestEmail = 'apirefreshtest@example.com';
     const apiRefreshTestPass = 'password';
 
-    const user = await User.createUserByEmailAndPassword(
-      apiRefreshTestEmail,
-      apiRefreshTestPass,
-      ''
-    );
+    const user = await registerRequest(apiRefreshTestEmail, apiRefreshTestPass);
+
+    const loginToken = user.body['loginToken'];
+    const refreshToken = user.body['refreshToken'];
 
     const response = await request(app)
       .post('/api/v0/auth/refresh')
-      .auth(user.validToken.refreshToken, { type: 'bearer' })
+      .auth(refreshToken, { type: 'bearer' })
       .expect(200);
 
     expect(response.body).toEqual({
       createdAt: expect.stringMatching(iso8601RegExp),
-      loginToken: expect.not.stringContaining(user.validToken.loginToken),
-      refreshToken: expect.not.stringContaining(user.validToken.refreshToken),
+      loginToken: expect.not.stringContaining(loginToken),
+      refreshToken: expect.not.stringContaining(refreshToken),
     });
 
     expect(
       (
         await prisma.token.findMany({
           where: {
-            userId: user.id,
+            userId: (await User.findUserByEmail(apiRefreshTestEmail)).id,
           },
         })
       ).length

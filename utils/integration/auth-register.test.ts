@@ -53,13 +53,12 @@ describe('/api/v0/auth/register', () => {
     const aleadyExistsTestEmail = 'aleadyexiststest@example.com';
     const aleadyExistsTestPassword = 'password';
 
-    await prisma.user.create({
-      data: {
-        username: 'testuser',
+    const aleadyExistsUserCreateRes = await request(app)
+      .post('/api/v0/auth/register')
+      .send({
         email: aleadyExistsTestEmail,
-        hashedPassword: bcrypt.hashSync(aleadyExistsTestPassword, 10),
-      },
-    });
+        password: aleadyExistsTestPassword,
+      });
 
     const response = await request(app)
       .post('/api/v0/auth/register')
